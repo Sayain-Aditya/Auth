@@ -20,6 +20,7 @@ const Dashboard = () => {
       setUser({
         username: decoded.username || decoded.name || decoded.id || '',
         department: decoded.department,
+        role: decoded.role,
       });
     } catch {
       setUser(null);
@@ -53,6 +54,13 @@ const Dashboard = () => {
             className="mt-6 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition">
             Logout
         </button>
+      {user.role === 'admin' && (
+        <button 
+          onClick={() => navigate('/admin')}
+          className="mt-6 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition">
+          Admin
+        </button>
+      )}
     </div>
   );
 };
