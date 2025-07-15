@@ -4,9 +4,19 @@ const RoomList = () => {
   const [rooms, setRooms] = useState([]);
 
   const fetchRooms = () => {
-    fetch('http://localhost:5000/api/bookings/all')
+    fetch('http://localhost:5000/api/bookings/all', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
       .then(res => res.json())
-      .then(setRooms)
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRooms(data);
+        } else {
+          setRooms([]);
+        }
+      })
       .catch(() => setRooms([]));
   };
 
@@ -18,31 +28,23 @@ const RoomList = () => {
     try {
       const res = await fetch(`http://localhost:5000/api/bookings/delete/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
-  
-      console.log('Response:', res); // DEBUG
-  
-      const contentType = res.headers.get('content-type');
-      let data = {};
-  
-      if (contentType && contentType.includes('application/json')) {
-        data = await res.json();
-        console.log('Data:', data); // DEBUG
-      }
-  
+
+      const data = await res.json();
       if (!res.ok) {
         alert(data.message || 'Failed to unbook');
         return;
       }
-  
+
       alert(data.message || '✅ Room unbooked successfully');
       fetchRooms();
     } catch (err) {
       alert('❌ Error unbooking: ' + err.message);
     }
   };
-  
-  
 
   const handleDelete = async (id) => {
     const confirm = window.confirm("Are you sure you want to delete this booking?");
@@ -51,6 +53,9 @@ const RoomList = () => {
     try {
       const res = await fetch(`http://localhost:5000/api/bookings/delete/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
       const data = await res.json();
       if (!res.ok) return alert(data.message || 'Delete failed');
@@ -78,7 +83,7 @@ const RoomList = () => {
             </tr>
           </thead>
           <tbody>
-            {rooms.map(r => (
+            {Array.isArray(rooms) && rooms.map(r => (
               <tr key={r._id} className="border-b hover:bg-gray-50">
                 <td className="p-3">{r.roomNumber}</td>
                 <td className="p-3">{r.referenceNumber}</td>
@@ -87,18 +92,8 @@ const RoomList = () => {
                 <td className="p-3">{r.bookingInfo?.checkIn?.slice(0, 10)}</td>
                 <td className="p-3">{r.bookingInfo?.checkOut?.slice(0, 10)}</td>
                 <td className="p-3 space-x-2">
-                  <button
-                    onClick={() => handleUnbook(r._id)}
-                    className="px-3 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600"
-                  >
-                    Unbook
-                  </button>
-                  <button
-                    onClick={() => handleDelete(r._id)}
-                    className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
+                  <button onClick={() => handleUnbook(r._id)} className="px-3 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600">Unbook</button>
+                  <button onClick={() => handleDelete(r._id)} className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">Delete</button>
                 </td>
               </tr>
             ))}

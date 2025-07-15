@@ -41,12 +41,20 @@ const BookingForm = () => {
       .then(res => res.json())
       .then(setCategories)
       .catch(() => setCategories([]));
-
-    fetch('http://localhost:5000/api/bookings/all')
+  
+    fetch('http://localhost:5000/api/bookings/all', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
       .then(res => res.json())
-      .then(setBookings)
+      .then(data => {
+        if (Array.isArray(data)) setBookings(data);
+        else setBookings([]);
+      })
       .catch(() => setBookings([]));
   }, []);
+  
 
   const handleChange = (section, field, value) => {
     setForm(prev => ({
@@ -86,9 +94,12 @@ const BookingForm = () => {
     try {
       const res = await fetch('http://localhost:5000/api/bookings/book', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify(payload),
-      });
+      });      
 
       const data = await res.json();
 
