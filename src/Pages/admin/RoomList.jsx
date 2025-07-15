@@ -24,6 +24,18 @@ const RoomList = () => {
     fetchRooms();
   }, []);
 
+  const token = localStorage.getItem("token");
+  let role = '';
+  
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      role = payload?.role || '';
+    } catch (err) {
+      console.warn("Failed to parse token:", err);
+    }
+  }  
+
   const handleUnbook = async (id) => {
     try {
       const res = await fetch(`http://localhost:5000/api/bookings/delete/${id}`, {
@@ -51,7 +63,7 @@ const RoomList = () => {
     if (!confirm) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/delete/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/bookings/permanent-delete/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -92,9 +104,22 @@ const RoomList = () => {
                 <td className="p-3">{r.bookingInfo?.checkIn?.slice(0, 10)}</td>
                 <td className="p-3">{r.bookingInfo?.checkOut?.slice(0, 10)}</td>
                 <td className="p-3 space-x-2">
-                  <button onClick={() => handleUnbook(r._id)} className="px-3 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600">Unbook</button>
-                  <button onClick={() => handleDelete(r._id)} className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">Delete</button>
-                </td>
+  <button
+    onClick={() => handleUnbook(r._id)}
+    className="px-3 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600"
+  >
+    Unbook
+  </button>
+
+  {role === 'admin' && (
+    <button
+      onClick={() => handleDelete(r._id)}
+      className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+    >
+      Delete
+    </button>
+  )}
+</td>
               </tr>
             ))}
             {rooms.length === 0 && (
