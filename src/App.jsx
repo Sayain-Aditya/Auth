@@ -6,7 +6,7 @@ import Register from './Pages/Register';
 import AdminDashboard from './Pages/admin/AdminDashboard';
 import CategoryManager from './Pages/admin/CategoryManager';
 import BookingManager from './Pages/admin/BookingManager';
-
+import RoomList from './Pages/admin/RoomList';
 
 const App = () => {
   return (
@@ -19,6 +19,7 @@ const App = () => {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/categories" element={<CategoryManager />} />
           <Route path="/admin/bookings" element={<BookingManager />} />
+          <Route path="/admin/rooms" element={<RoomList />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
