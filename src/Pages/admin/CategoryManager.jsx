@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const CategoryManager = () => {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
-  const [maxRooms, setMaxRooms] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('active');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -16,9 +18,8 @@ const CategoryManager = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('http://localhost:5000/api/categories/all');
-      const data = await res.json();
-      setCategories(data);
+      const res = await axios.get('http://localhost:5000/api/categories/all');
+      setCategories(res.data);
     } catch (err) {
       setError('Failed to fetch categories');
     }
@@ -29,27 +30,20 @@ const CategoryManager = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    if (!name || !maxRooms) {
-      setError('Please fill all fields');
+    if (!name) {
+      setError('Please enter a category name');
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/categories/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, maxRooms: Number(maxRooms) })
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Failed to create category');
-      }
+      await axios.post('http://localhost:5000/api/categories/add', { name, description, status });
       setName('');
-      setMaxRooms('');
+      setDescription('');
+      setStatus('active');
       setSuccess('Category created successfully');
       fetchCategories();
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.message);
     }
     setLoading(false);
   };
@@ -70,16 +64,27 @@ const CategoryManager = () => {
           />
         </div>
         <div className="mb-4">
-          <label className="block mb-1 font-medium">Max Rooms</label>
+          <label className="block mb-1 font-medium">Description</label>
           <input
-            type="number"
-            value={maxRooms}
-            onChange={e => setMaxRooms(e.target.value)}
-            placeholder="e.g. 10"
+            type="text"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="e.g. Spacious rooms with city view"
             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            min={1}
             disabled={loading}
           />
+        </div>
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">Status</label>
+          <select
+            value={status}
+            onChange={e => setStatus(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            disabled={loading}
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
         <button
           type="submit"
@@ -98,14 +103,16 @@ const CategoryManager = () => {
             <thead>
               <tr className="bg-gray-100">
                 <th className="py-2 px-4 border-b text-left">Name</th>
-                <th className="py-2 px-4 border-b text-left">Available Rooms</th>
+                <th className="py-2 px-4 border-b text-left">Description</th>
+                <th className="py-2 px-4 border-b text-left">Status</th>
               </tr>
             </thead>
             <tbody>
               {categories.map(cat => (
                 <tr key={cat._id}>
                   <td className="py-2 px-4 border-b">{cat.name}</td>
-                  <td className="py-2 px-4 border-b">{cat.maxRooms}</td>
+                  <td className="py-2 px-4 border-b">{cat.description || '-'}</td>
+                  <td className="py-2 px-4 border-b">{cat.status}</td>
                 </tr>
               ))}
             </tbody>
