@@ -28,7 +28,7 @@ const RoomManager = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/rooms');
+      const res = await axios.get('http://localhost:5000/api/rooms/all');
       setRooms(res.data);
     } catch {
       setRooms([]);

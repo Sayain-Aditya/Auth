@@ -9,6 +9,7 @@ import BookingManager from './Pages/admin/BookingManager';
 import RoomManager from './Pages/admin/RoomManager';
 import BookRoomByCategory from './Pages/admin/BookRoomByCategory';
 import AdminRoute from './Pages/admin/AdminRoute';
+import CustomerList from './Pages/admin/CustomerList';
 
 const App = () => {
   return (
@@ -23,6 +24,7 @@ const App = () => {
           <Route path="/admin/rooms" element={<AdminRoute><RoomManager /></AdminRoute>} />
           <Route path="/admin/book-room-by-category" element={<AdminRoute><BookRoomByCategory /></AdminRoute>} />
           <Route path="/admin/bookings" element={<AdminRoute><BookingManager /></AdminRoute>} />
+          <Route path="/admin/customers" element={<AdminRoute><CustomerList /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
