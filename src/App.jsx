@@ -6,7 +6,10 @@ import Register from './Pages/Register';
 import AdminDashboard from './Pages/admin/AdminDashboard';
 import CategoryManager from './Pages/admin/CategoryManager';
 import BookingManager from './Pages/admin/BookingManager';
-import RoomList from './Pages/admin/RoomList';
+import RoomManager from './Pages/admin/RoomManager';
+import BookRoomByCategory from './Pages/admin/BookRoomByCategory';
+import AdminRoute from './Pages/admin/AdminRoute';
+import HousekeepingManager from './Pages/admin/HousekeepingManager';
 
 const App = () => {
   return (
@@ -16,10 +19,12 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/categories" element={<CategoryManager />} />
-          <Route path="/admin/bookings" element={<BookingManager />} />
-          <Route path="/admin/rooms" element={<RoomList />} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/categories" element={<AdminRoute><CategoryManager /></AdminRoute>} />
+          <Route path="/admin/rooms" element={<AdminRoute><RoomManager /></AdminRoute>} />
+          <Route path="/admin/book-room-by-category" element={<AdminRoute><BookRoomByCategory /></AdminRoute>} />
+          <Route path="/admin/bookings" element={<AdminRoute><BookingManager /></AdminRoute>} />
+          <Route path="/admin/housekeepings" element={<HousekeepingManager />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

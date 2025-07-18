@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -12,12 +13,12 @@ const Dashboard = () => {
       navigate("/login");
       return;
     }
-
+    // Decode token to get user info (simple way, not secure for sensitive data)
     const payload = token.split(".")[1];
     try {
       const decoded = JSON.parse(atob(payload));
       setUser({
-        username: decoded.username || '',
+        username: decoded.username || decoded.name || decoded.id || '',
         department: decoded.department,
         role: decoded.role,
       });
@@ -32,12 +33,8 @@ const Dashboard = () => {
   if (loading) return <div>Loading...</div>;
   if (!user) return null;
 
-  const isReception =
-    user.role === 'staff' && user.department?.name?.toLowerCase() === 'reception';
-  const isAdmin = user.role === 'admin';
-
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
     navigate("/login");
   };
 
@@ -47,43 +44,23 @@ const Dashboard = () => {
       <div className="mb-4">
         <span className="font-semibold">Username:</span> {user.username}
       </div>
-      <div className="mb-2">
-        <span className="font-semibold">Role:</span> {user.role}
-      </div>
       <div>
-        <span className="font-semibold">Department:</span>{" "}
-        {user.department?.name || '-'}
+        <span className="font-semibold">Department Number(s):</span> {Array.isArray(user.department)
+          ? user.department.map(dep => dep.id || dep).join(", ")
+          : (user.department?.id || user.department || '')}
       </div>
-
-      {(isAdmin || isReception) && (
-        <div className="mt-6">
-          <button
-            onClick={() => navigate("/admin/bookings")}
-            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          >
-            Manage Bookings
-          </button>
-          <button
-            onClick={() => navigate("/admin/rooms")}
-            className="mt-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-          >
-            View Booked Rooms
-          </button>
-        </div>
+        <button
+            onClick={handleLogout}
+            className="mt-6 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition">
+            Logout
+        </button>
+      {user.role === 'admin' && (
+        <button 
+          onClick={() => navigate('/admin')}
+          className="mt-6 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition">
+          Admin
+        </button>
       )}
-
-      {!isAdmin && !isReception && (
-        <div className="mt-6 text-sm text-red-500 text-center">
-          🚫 You don't have access to bookings.
-        </div>
-      )}
-
-      <button
-        onClick={handleLogout}
-        className="mt-6 w-full bg-gray-700 text-white py-2 rounded hover:bg-black transition"
-      >
-        Logout
-      </button>
     </div>
   );
 };
