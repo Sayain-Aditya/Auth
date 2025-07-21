@@ -42,6 +42,13 @@ const AdminDashboard = () => {
             <h2 className="text-xl font-semibold text-green-800 mb-2">Manage Bookings</h2>
             <p className="text-gray-600">Book rooms, view all bookings, and manage room allocations.</p>
           </button>
+          <button
+            onClick={() => navigate('/admin/housekeepings')}
+            className="block w-full text-left p-6 bg-purple-100 rounded-lg shadow hover:bg-purple-200 transition"
+          >
+            <h2 className="text-xl font-semibold text-purple-800 mb-2">Manage Housekeeping</h2>
+            <p className="text-gray-600">Assign, track, and review housekeeping tasks.</p>
+          </button>
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import RoomManager from './Pages/admin/RoomManager';
 import BookRoomByCategory from './Pages/admin/BookRoomByCategory';
 import AdminRoute from './Pages/admin/AdminRoute';
 import CustomerList from './Pages/admin/CustomerList';
+import HousekeepingManager from './Pages/admin/HousekeepingManager';
 
 const App = () => {
   return (
@@ -28,6 +29,8 @@ const App = () => {
           <Route path="/admin/bookings" element={<AdminRoute><BookingManager /></AdminRoute>} />
           <Route path="/admin/customers" element={<AdminRoute><CustomerList /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/admin/housekeepings" element={<HousekeepingManager />} />
+
         </Routes>
       </div>
     </Router>
