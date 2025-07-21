@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Pages/login';
 import Dashboard from './Pages/dash/Dashboard';
+import HousekeepingDashboard from './Pages/dash/HousekeepingDashboard';
 import Register from './Pages/Register';
 import AdminDashboard from './Pages/admin/AdminDashboard';
 import CategoryManager from './Pages/admin/CategoryManager';
@@ -19,6 +20,7 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/housekeeping" element={<HousekeepingDashboard />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/categories" element={<AdminRoute><CategoryManager /></AdminRoute>} />
           <Route path="/admin/rooms" element={<AdminRoute><RoomManager /></AdminRoute>} />

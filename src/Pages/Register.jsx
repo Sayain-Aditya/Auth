@@ -10,6 +10,7 @@ const DEPARTMENTS = [
   { id: 3, name: 'reception' },
   { id: 4, name: 'maintenance' },
   { id: 5, name: 'other' },
+  { id: 6, name: 'housekeeping' }
 ];
 
 const departmentOptions = DEPARTMENTS.map(dep => ({ value: dep, label: `${dep.id}` }));

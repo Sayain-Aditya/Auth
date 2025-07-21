@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import HousekeepingTaskForm from "./HousekeepingTaskForm";
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -67,7 +68,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded-lg shadow-md">
+    <div className="max-w-xl mx-auto mt-16 p-8 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-center">Dashboard</h2>
       
       <div className="mb-4">
@@ -120,6 +121,14 @@ const Dashboard = () => {
         </div>
       )}
       
+      {/* Show housekeeping form for reception staff */}
+      {user.role === 'staff' && Array.isArray(user.department) && 
+        user.department.some(dep => dep.name?.toLowerCase() === 'reception') && (
+        <div className="mt-6">
+          <HousekeepingTaskForm />
+        </div>
+      )}
+
       <div className="mt-6 flex flex-col gap-3">
         {user.role === 'admin' && (
           <button 
@@ -136,6 +145,16 @@ const Dashboard = () => {
             onClick={() => navigate('/admin/book-room-by-category')}
             className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
             Book Room for Customer
+          </button>
+        )}
+        
+        {/* Add Housekeeping Dashboard button for housekeeping staff */}
+        {user.role === 'staff' && Array.isArray(user.department) && 
+          user.department.some(dep => dep.name?.toLowerCase() === 'housekeeping') && (
+          <button 
+            onClick={() => navigate('/housekeeping')}
+            className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
+            Housekeeping Dashboard
           </button>
         )}
         
