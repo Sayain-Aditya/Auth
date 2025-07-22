@@ -83,6 +83,16 @@ const HousekeepingTaskDetails = ({ taskId }) => {
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      // If task is completed, update the room status to available
+      if (newStatus === "completed" && task.roomId?._id) {
+        await axios.put(
+          `http://localhost:5000/api/rooms/update/${task.roomId._id}`,
+          { status: 'available' },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+      
       fetchTaskDetails();
     } catch (err) {
       setError(`Error: ${err.response?.data?.error || err.message}`);

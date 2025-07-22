@@ -108,16 +108,47 @@ const BookingManager = () => {
     setSuccess('');
     setLoading(true);
     try {
+      // Get the booking details first to get the room information
+      const token = localStorage.getItem('token');
+      const bookingRes = await axios.get(`http://localhost:5000/api/bookings/all`, {
+        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      });
+      
+      const booking = bookingRes.data.find(b => b._id === bookingId);
+      if (!booking) throw new Error('Booking not found');
+      
+      // Delete the booking
       const res = await fetch(`http://localhost:5000/api/bookings/delete/${bookingId}`, {
         method: 'DELETE'
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to unbook');
-      setSuccess('Booking deleted (room unbooked)');
+      
+      // Set the room to maintenance status
+      const roomId = booking.roomId;
+      if (roomId) {
+        await axios.put(`http://localhost:5000/api/rooms/update/${roomId}`, 
+          { status: 'maintenance' },
+          { headers: { Authorization: token ? `Bearer ${token}` : undefined } }
+        );
+        
+        // Create a housekeeping task for this room
+        await axios.post('http://localhost:5000/api/housekeeping/tasks', {
+          roomId: roomId,
+          cleaningType: 'checkout',
+          notes: 'Room needs cleaning after checkout',
+          priority: 'high'
+        }, { headers: { Authorization: token ? `Bearer ${token}` : undefined } });
+      }
+      
+      setSuccess('Booking deleted and room set to maintenance status. Housekeeping task created.');
       fetchBookings();
       fetchCategories();
+      if (selectedCategory) {
+        fetchRooms(selectedCategory);
+      }
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.message);
     }
     setLoading(false);
   };
@@ -169,9 +200,9 @@ const BookingManager = () => {
           <h3 className="text-lg font-semibold mb-2">Rooms in {categories.find(c => c._id === selectedCategory)?.name || ''}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {rooms.map(room => (
-              <div key={room._id} className={`p-4 rounded shadow border ${room.isBooked ? 'bg-red-100 border-red-300' : 'bg-green-100 border-green-300'}`}>
+              <div key={room._id} className={`p-4 rounded shadow border ${room.isBooked ? 'bg-red-100 border-red-300' : room.status === 'maintenance' ? 'bg-yellow-100 border-yellow-300' : 'bg-green-100 border-green-300'}`}>
                 <div className="font-semibold">Room #{room.room_number}</div>
-                <div>Status: {room.isBooked ? 'Booked' : 'Available'}</div>
+                <div>Status: {room.isBooked ? 'Booked' : room.status === 'maintenance' ? 'Maintenance' : 'Available'}</div>
                 <div>Price: ₹{room.price}</div>
                 <div>Description: {room.description || '-'}</div>
                 <button
@@ -179,7 +210,7 @@ const BookingManager = () => {
                   disabled={!room.canSelect || loading}
                   onClick={() => handleBookRoom(room._id)}
                 >
-                  {room.isBooked ? 'Booked' : 'Book Now'}
+                  {room.isBooked ? 'Booked' : room.status === 'maintenance' ? 'Under Maintenance' : 'Book Now'}
                 </button>
               </div>
             ))}
@@ -225,4 +256,4 @@ const BookingManager = () => {
   );
 };
 
-export default BookingManager; 
+export default BookingManager;
