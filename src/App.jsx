@@ -11,6 +11,11 @@ import RoomManager from './Pages/admin/RoomManager';
 import BookRoomByCategory from './Pages/admin/BookRoomByCategory';
 import AdminRoute from './Pages/admin/AdminRoute';
 import CustomerList from './Pages/admin/CustomerList';
+import InventoryManager from './Pages/admin/InventoryManager';
+import InventoryTable from './Pages/admin/InventoryTable';
+import InventoryTransactions from './Pages/admin/InventoryTransactions';
+import PurchaseOrderManager from './Pages/admin/PurchaseOrderManager';
+
 
 const App = () => {
   return (
@@ -27,6 +32,10 @@ const App = () => {
           <Route path="/admin/book-room-by-category" element={<AdminRoute><BookRoomByCategory /></AdminRoute>} />
           <Route path="/admin/bookings" element={<AdminRoute><BookingManager /></AdminRoute>} />
           <Route path="/admin/customers" element={<AdminRoute><CustomerList /></AdminRoute>} />
+          <Route path="/admin/inventory" element={<AdminRoute><InventoryManager /></AdminRoute>} />
+          <Route path="/admin/inventory-table" element={<AdminRoute><InventoryTable /></AdminRoute>} />
+          <Route path="/admin/inventory-transactions" element={<AdminRoute><InventoryTransactions /></AdminRoute>} />
+          <Route path="/admin/purchase-orders" element={<AdminRoute><PurchaseOrderManager /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
