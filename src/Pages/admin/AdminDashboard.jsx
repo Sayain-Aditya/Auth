@@ -104,6 +104,28 @@ const AdminDashboard = () => {
               Create and manage purchase orders for inventory restocking.
             </p>
           </button>
+          <button
+            onClick={() => navigate("/admin/pantry/add-item")}
+            className="block w-full text-left p-6 bg-yellow-100 rounded-lg shadow hover:bg-yellow-200 transition"
+          >
+            <h2 className="text-xl font-semibold text-yellow-800 mb-2">
+              Add Pantry Item
+            </h2>
+            <p className="text-gray-600">
+              Add new items to the pantry inventory.
+            </p>
+          </button>
+          <button
+            onClick={() => navigate("/admin/pantry")}
+            className="block w-full text-left p-6 bg-gray-100 rounded-lg shadow hover:bg-gray-200 transition"
+          >
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">
+              Pantry Management
+            </h2>
+            <p className="text-gray-600">
+              Manage pantry items, stock levels, and low stock alerts.
+            </p>
+          </button>
         </div>
       </div>
     </div>

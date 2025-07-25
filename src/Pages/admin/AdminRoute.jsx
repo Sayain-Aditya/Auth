@@ -24,7 +24,8 @@ const AdminRoute = ({ children }) => {
       if (hasReception && (
         window.location.pathname.includes('/book-room') ||
         window.location.pathname.includes('/inventory') ||
-        window.location.pathname.includes('/purchase-orders')
+        window.location.pathname.includes('/purchase-orders') ||
+        window.location.pathname.includes('/pantry')
       )) {
         return children;
       }

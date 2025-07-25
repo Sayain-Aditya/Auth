@@ -15,6 +15,8 @@ import InventoryManager from './Pages/admin/InventoryManager';
 import InventoryTable from './Pages/admin/InventoryTable';
 import InventoryTransactions from './Pages/admin/InventoryTransactions';
 import PurchaseOrderManager from './Pages/admin/PurchaseOrderManager';
+import PantryDashboard from './Pages/dash/PantryDashboard';
+import PantryItemForm from './Pages/admin/PantryItemForm';
 
 
 const App = () => {
@@ -26,6 +28,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/housekeeping" element={<HousekeepingDashboard />} />
+          <Route path="/pantry" element={<PantryDashboard />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/categories" element={<AdminRoute><CategoryManager /></AdminRoute>} />
           <Route path="/admin/rooms" element={<AdminRoute><RoomManager /></AdminRoute>} />
@@ -36,6 +39,8 @@ const App = () => {
           <Route path="/admin/inventory-table" element={<AdminRoute><InventoryTable /></AdminRoute>} />
           <Route path="/admin/inventory-transactions" element={<AdminRoute><InventoryTransactions /></AdminRoute>} />
           <Route path="/admin/purchase-orders" element={<AdminRoute><PurchaseOrderManager /></AdminRoute>} />
+          <Route path="/admin/pantry" element={<AdminRoute><PantryDashboard /></AdminRoute>} />
+          <Route path="/admin/pantry/add-item" element={<AdminRoute><PantryItemForm /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

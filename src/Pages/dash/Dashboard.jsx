@@ -158,11 +158,15 @@ const Dashboard = () => {
           </button>
         )}
         
-        <button
-          onClick={handleLogout}
-          className="w-full bg-gray-600 text-white py-2 rounded hover:bg-gray-700 transition">
-          Logout
-        </button>
+        {/* Add Pantry Management button for kitchen and pantry staff */}
+        {user.role === 'staff' && Array.isArray(user.department) && 
+          user.department.some(dep => ['kitchen', 'pantry'].includes(dep.name?.toLowerCase())) && (
+          <button 
+            onClick={() => navigate('/pantry')}
+            className="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700 transition">
+            Pantry Management
+          </button>
+        )}
       </div>
     </div>
   );
