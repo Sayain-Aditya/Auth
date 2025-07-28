@@ -17,6 +17,7 @@ import InventoryTransactions from './Pages/admin/InventoryTransactions';
 import PurchaseOrderManager from './Pages/admin/PurchaseOrderManager';
 import PantryDashboard from './Pages/dash/PantryDashboard';
 import PantryItemForm from './Pages/admin/PantryItemForm';
+import TableBooking from './Pages/admin/TableBooking';
 
 
 const App = () => {
@@ -41,6 +42,7 @@ const App = () => {
           <Route path="/admin/purchase-orders" element={<AdminRoute><PurchaseOrderManager /></AdminRoute>} />
           <Route path="/admin/pantry" element={<AdminRoute><PantryDashboard /></AdminRoute>} />
           <Route path="/admin/pantry/add-item" element={<AdminRoute><PantryItemForm /></AdminRoute>} />
+          <Route path="/admin/table-booking" element={<AdminRoute><TableBooking /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

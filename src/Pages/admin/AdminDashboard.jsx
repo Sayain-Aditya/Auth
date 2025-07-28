@@ -116,6 +116,17 @@ const AdminDashboard = () => {
             </p>
           </button>
           <button
+            onClick={() => navigate("/admin/table-booking")}
+            className="block w-full text-left p-6 bg-purple-100 rounded-lg shadow hover:bg-purple-200 transition"
+          >
+            <h2 className="text-xl font-semibold text-purple-800 mb-2">
+              Table Booking
+            </h2>
+            <p className="text-gray-600">
+              Book tables and manage restaurant reservations.
+            </p>
+          </button>
+          <button
             onClick={() => navigate("/admin/pantry")}
             className="block w-full text-left p-6 bg-gray-100 rounded-lg shadow hover:bg-gray-200 transition"
           >
