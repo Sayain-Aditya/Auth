@@ -21,6 +21,9 @@ const TableBooking = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('book');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [invoice, setInvoice] = useState(null);
 
   useEffect(() => {
     fetchTables();
@@ -43,10 +46,10 @@ const TableBooking = () => {
   const fetchBookings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/restaurant/orders', {
+      const res = await axios.get('http://localhost:5000/api/restaurant-orders/all', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setBookings(res.data.orders || []);
+      setBookings(res.data || []);
     } catch (err) {
       console.error('Failed to fetch bookings');
     }
@@ -55,10 +58,10 @@ const TableBooking = () => {
   const fetchItems = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/restaurant/items', {
+      const res = await axios.get('http://localhost:5000/api/items/all', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setItems(res.data.items || []);
+      setItems(res.data || []);
     } catch (err) {
       console.error('Failed to fetch items');
     }
@@ -106,7 +109,7 @@ const TableBooking = () => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/restaurant/orders', form, {
+      await axios.post('http://localhost:5000/api/restaurant-orders/create', form, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess('Table booked successfully');
@@ -133,13 +136,41 @@ const TableBooking = () => {
   const updateBookingStatus = async (bookingId, status) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/restaurant/orders/${bookingId}/status`, 
+      await axios.patch(`http://localhost:5000/api/restaurant-orders/${bookingId}/status`, 
         { status },
         { headers: { Authorization: `Bearer ${token}` }}
       );
       fetchBookings();
     } catch (err) {
       setError('Failed to update booking status');
+    }
+  };
+
+  const viewOrderDetails = async (orderId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`http://localhost:5000/api/restaurant-orders/details/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrderDetails(res.data);
+      setSelectedOrder(orderId);
+      setActiveTab('details');
+    } catch (err) {
+      setError('Failed to fetch order details');
+    }
+  };
+
+  const generateInvoice = async (orderId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`http://localhost:5000/api/restaurant-orders/invoice/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setInvoice(res.data);
+      setSelectedOrder(orderId);
+      setActiveTab('invoice');
+    } catch (err) {
+      setError('Failed to generate invoice');
     }
   };
 
@@ -167,6 +198,22 @@ const TableBooking = () => {
         >
           Available Tables
         </button>
+        {orderDetails && (
+          <button
+            className={`py-2 px-4 ${activeTab === 'details' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('details')}
+          >
+            Order Details
+          </button>
+        )}
+        {invoice && (
+          <button
+            className={`py-2 px-4 ${activeTab === 'invoice' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('invoice')}
+          >
+            Invoice
+          </button>
+        )}
       </div>
 
       {error && <div className="text-red-600 mb-4">{error}</div>}
@@ -390,7 +437,18 @@ const TableBooking = () => {
                     </select>
                   </td>
                   <td className="px-4 py-2 border-b">
-                    <button className="text-blue-600 text-sm">View Details</button>
+                    <button 
+                      onClick={() => viewOrderDetails(booking._id)}
+                      className="text-blue-600 text-sm hover:underline mr-2"
+                    >
+                      View Details
+                    </button>
+                    <button 
+                      onClick={() => generateInvoice(booking._id)}
+                      className="text-green-600 text-sm hover:underline"
+                    >
+                      Invoice
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -431,6 +489,117 @@ const TableBooking = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Order Details */}
+      {activeTab === 'details' && orderDetails && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-4">Order Details</h3>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p><strong>Order ID:</strong> {orderDetails._id}</p>
+              <p><strong>Staff:</strong> {orderDetails.staffName}</p>
+              <p><strong>Phone:</strong> {orderDetails.phoneNumber}</p>
+              <p><strong>Table:</strong> {orderDetails.tableNo}</p>
+            </div>
+            <div>
+              <p><strong>Status:</strong> {orderDetails.status}</p>
+              <p><strong>Amount:</strong> ₹{orderDetails.amount}</p>
+              <p><strong>Discount:</strong> {orderDetails.discount}%</p>
+              <p><strong>Date:</strong> {new Date(orderDetails.createdAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+          <h4 className="font-medium mb-2">Items Ordered:</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full border">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left border">Item</th>
+                  <th className="px-4 py-2 text-left border">Price</th>
+                  <th className="px-4 py-2 text-left border">Quantity</th>
+                  <th className="px-4 py-2 text-left border">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderDetails.items?.map((item, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-2 border">{item.itemId.name}</td>
+                    <td className="px-4 py-2 border">₹{item.itemId.Price}</td>
+                    <td className="px-4 py-2 border">{item.quantity}</td>
+                    <td className="px-4 py-2 border">₹{(item.itemId.Price * item.quantity).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {orderDetails.notes && (
+            <div className="mt-4">
+              <p><strong>Notes:</strong> {orderDetails.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Invoice */}
+      {activeTab === 'invoice' && invoice && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">INVOICE</h2>
+            <button 
+              onClick={() => window.print()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Print Invoice
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <p><strong>Order ID:</strong> {invoice.orderId}</p>
+              <p><strong>Table:</strong> {invoice.tableNo}</p>
+              <p><strong>Staff:</strong> {invoice.staffName}</p>
+            </div>
+            <div>
+              <p><strong>Date:</strong> {new Date(invoice.createdAt).toLocaleDateString()}</p>
+              <p><strong>Phone:</strong> {invoice.phoneNumber}</p>
+            </div>
+          </div>
+          
+          <table className="w-full border-collapse border mb-6">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border px-4 py-2 text-left">Item</th>
+                <th className="border px-4 py-2 text-right">Price</th>
+                <th className="border px-4 py-2 text-right">Qty</th>
+                <th className="border px-4 py-2 text-right">Discount</th>
+                <th className="border px-4 py-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.items?.map((item, index) => (
+                <tr key={index}>
+                  <td className="border px-4 py-2">{item.name}</td>
+                  <td className="border px-4 py-2 text-right">₹{item.price}</td>
+                  <td className="border px-4 py-2 text-right">{item.quantity}</td>
+                  <td className="border px-4 py-2 text-right">{item.discount}%</td>
+                  <td className="border px-4 py-2 text-right">₹{item.total.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          <div className="text-right">
+            <p className="text-lg"><strong>Subtotal: ₹{invoice.subtotal?.toFixed(2)}</strong></p>
+            <p>Order Discount ({invoice.orderDiscount}%): -₹{invoice.orderDiscountAmount?.toFixed(2)}</p>
+            <h3 className="text-xl font-bold mt-2">Final Amount: ₹{invoice.finalAmount?.toFixed(2)}</h3>
+          </div>
+          
+          {invoice.notes && (
+            <div className="mt-4 pt-4 border-t">
+              <p><strong>Notes:</strong> {invoice.notes}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
