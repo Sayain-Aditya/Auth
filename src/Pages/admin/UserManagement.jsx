@@ -8,10 +8,35 @@ const UserManagement = () => {
   const [success, setSuccess] = useState('');
   const [editUser, setEditUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([]);
 
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    setFilteredUsers(users);
+  }, [users]);
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim()) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`http://localhost:5000/api/search/universal?query=${query}&type=users`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setFilteredUsers(res.data.users || []);
+      } catch (err) {
+        console.error('Search failed:', err);
+        setFilteredUsers([]);
+      }
+    } else {
+      setFilteredUsers(users);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -103,6 +128,17 @@ const UserManagement = () => {
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search users by username, email, or role..."
+          value={searchQuery}
+          onChange={(e) => handleSearch(e.target.value)}
+          className="w-full p-3 border rounded-lg"
+        />
+      </div>
+
       {error && <div className="text-red-600 mb-4">{error}</div>}
       {success && <div className="text-green-600 mb-4">{success}</div>}
 
@@ -122,7 +158,7 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {users.map(user => (
+              {filteredUsers.map(user => (
                 <tr key={user._id}>
                   <td className="px-4 py-2 border-b font-medium">{user.username}</td>
                   <td className="px-4 py-2 border-b">{user.email}</td>
@@ -154,7 +190,7 @@ const UserManagement = () => {
             </tbody>
           </table>
           
-          {users.length === 0 && !loading && (
+          {filteredUsers.length === 0 && !loading && (
             <div className="text-center py-8 text-gray-500">
               No users found
             </div>
