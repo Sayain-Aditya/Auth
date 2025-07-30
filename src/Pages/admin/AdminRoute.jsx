@@ -31,6 +31,20 @@ const AdminRoute = ({ children }) => {
       }
     }
     
+    // Allow restaurant staff and cashier access to table-booking
+    if (payload.role === 'restaurant' && 
+        (payload.restaurantRole === 'staff' || payload.restaurantRole === 'cashier') &&
+        window.location.pathname.includes('/table-booking')) {
+      return children;
+    }
+    
+    // Allow restaurant chef access to KOT management
+    if (payload.role === 'restaurant' && 
+        payload.restaurantRole === 'chef' &&
+        window.location.pathname.includes('/kot-management')) {
+      return children;
+    }
+    
     // Not authorized
     console.log('Not authorized for this page');
     return <Navigate to="/dashboard" replace />;

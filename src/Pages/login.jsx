@@ -33,6 +33,8 @@ const Login = () => {
         navigate('/dashboard');
       } else if (decoded.role === 'staff') {
         navigate('/dashboard');
+      } else if (decoded.role === 'restaurant') {
+        navigate('/dashboard');
       } else {
         setError('Unknown user role.');
       }

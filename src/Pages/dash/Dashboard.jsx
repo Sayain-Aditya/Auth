@@ -28,6 +28,7 @@ const Dashboard = () => {
           username: decoded.username || decoded.name || decoded.id || '',
           department: decoded.department,
           role: decoded.role,
+          restaurantRole: decoded.restaurantRole,
         });
         
         // Fetch detailed staff data from backend
@@ -77,6 +78,11 @@ const Dashboard = () => {
       
       <div className="mb-4">
         <span className="font-semibold">Role:</span> {user.role}
+        {user.role === 'restaurant' && user.restaurantRole && (
+          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
+            {user.restaurantRole.charAt(0).toUpperCase() + user.restaurantRole.slice(1)}
+          </span>
+        )}
       </div>
       
       {/* Display staff-specific data */}
@@ -105,6 +111,16 @@ const Dashboard = () => {
               )}
             </ul>
           </div>
+          
+          {/* Show restaurant role for restaurant users */}
+          {staffData.restaurantRole && (
+            <div className="mb-2">
+              <span className="font-medium">Restaurant Role:</span> 
+              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-sm">
+                {staffData.restaurantRole.charAt(0).toUpperCase() + staffData.restaurantRole.slice(1)}
+              </span>
+            </div>
+          )}
           
           {/* Show account creation date */}
           <div className="mb-2">
@@ -165,6 +181,24 @@ const Dashboard = () => {
             onClick={() => navigate('/pantry')}
             className="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700 transition">
             Pantry Management
+          </button>
+        )}
+        
+        {/* Add Table Booking button for restaurant staff and cashier */}
+        {user.role === 'restaurant' && (user.restaurantRole === 'staff' || user.restaurantRole === 'cashier') && (
+          <button 
+            onClick={() => navigate('/admin/table-booking')}
+            className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition">
+            Table Booking Management
+          </button>
+        )}
+        
+        {/* Add KOT Management button for restaurant chef */}
+        {user.role === 'restaurant' && user.restaurantRole === 'chef' && (
+          <button 
+            onClick={() => navigate('/admin/kot-management')}
+            className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition">
+            KOT Management
           </button>
         )}
       </div>

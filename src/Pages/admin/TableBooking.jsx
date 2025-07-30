@@ -24,6 +24,11 @@ const TableBooking = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const [invoice, setInvoice] = useState(null);
+  const [addItemsForm, setAddItemsForm] = useState({
+    orderId: '',
+    items: [{ itemId: '', quantity: 1 }]
+  });
+  const [showAddItems, setShowAddItems] = useState(false);
 
   useEffect(() => {
     fetchTables();
@@ -171,6 +176,44 @@ const TableBooking = () => {
       setActiveTab('invoice');
     } catch (err) {
       setError('Failed to generate invoice');
+    }
+  };
+
+  const openAddItemsModal = (orderId) => {
+    setAddItemsForm({ orderId, items: [{ itemId: '', quantity: 1 }] });
+    setShowAddItems(true);
+  };
+
+  const handleAddItemChange = (index, field, value) => {
+    const updatedItems = [...addItemsForm.items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    setAddItemsForm({ ...addItemsForm, items: updatedItems });
+  };
+
+  const addNewItemRow = () => {
+    setAddItemsForm({
+      ...addItemsForm,
+      items: [...addItemsForm.items, { itemId: '', quantity: 1 }]
+    });
+  };
+
+  const removeItemRow = (index) => {
+    const updatedItems = addItemsForm.items.filter((_, i) => i !== index);
+    setAddItemsForm({ ...addItemsForm, items: updatedItems });
+  };
+
+  const submitAddItems = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`http://localhost:5000/api/restaurant-orders/${addItemsForm.orderId}/add-items`, 
+        { items: addItemsForm.items },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setShowAddItems(false);
+      setSuccess('Items added successfully');
+      fetchBookings();
+    } catch (err) {
+      setError('Failed to add items');
     }
   };
 
@@ -445,10 +488,18 @@ const TableBooking = () => {
                     </button>
                     <button 
                       onClick={() => generateInvoice(booking._id)}
-                      className="text-green-600 text-sm hover:underline"
+                      className="text-green-600 text-sm hover:underline mr-2"
                     >
                       Invoice
                     </button>
+                    {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                      <button 
+                        onClick={() => openAddItemsModal(booking._id)}
+                        className="text-purple-600 text-sm hover:underline"
+                      >
+                        Add Items
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -600,6 +651,73 @@ const TableBooking = () => {
               <p><strong>Notes:</strong> {invoice.notes}</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Add Items Modal */}
+      {showAddItems && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Add Items to Order</h3>
+            
+            {addItemsForm.items.map((item, index) => (
+              <div key={index} className="grid grid-cols-3 gap-2 mb-2">
+                <select
+                  value={item.itemId}
+                  onChange={(e) => handleAddItemChange(index, 'itemId', e.target.value)}
+                  className="p-2 border rounded"
+                  required
+                >
+                  <option value="">Select Item</option>
+                  {items.map(menuItem => (
+                    <option key={menuItem._id} value={menuItem._id}>
+                      {menuItem.name} - ₹{menuItem.Price}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Qty"
+                  value={item.quantity}
+                  onChange={(e) => handleAddItemChange(index, 'quantity', parseInt(e.target.value))}
+                  className="p-2 border rounded"
+                  min="1"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => removeItemRow(index)}
+                  className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                  disabled={addItemsForm.items.length === 1}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            
+            <button
+              type="button"
+              onClick={addNewItemRow}
+              className="w-full mb-4 px-3 py-2 bg-gray-500 text-white rounded"
+            >
+              Add Another Item
+            </button>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={submitAddItems}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Add Items
+              </button>
+              <button
+                onClick={() => setShowAddItems(false)}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

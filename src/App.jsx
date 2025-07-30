@@ -18,6 +18,7 @@ import PurchaseOrderManager from './Pages/admin/PurchaseOrderManager';
 import PantryDashboard from './Pages/dash/PantryDashboard';
 import PantryItemForm from './Pages/admin/PantryItemForm';
 import TableBooking from './Pages/admin/TableBooking';
+import KOTManagement from './Pages/admin/KOTManagement';
 import OrderDetails from './Pages/OrderDetails';
 
 
@@ -44,6 +45,7 @@ const App = () => {
           <Route path="/admin/pantry" element={<AdminRoute><PantryDashboard /></AdminRoute>} />
           <Route path="/admin/pantry/add-item" element={<AdminRoute><PantryItemForm /></AdminRoute>} />
           <Route path="/admin/table-booking" element={<AdminRoute><TableBooking /></AdminRoute>} />
+          <Route path="/admin/kot-management" element={<AdminRoute><KOTManagement /></AdminRoute>} />
           <Route path="/orders" element={<OrderDetails />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

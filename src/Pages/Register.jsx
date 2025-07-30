@@ -22,6 +22,7 @@ const Register = () => {
     password: '',
     role: '',
     department: [],
+    restaurantRole: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -108,6 +109,7 @@ const Register = () => {
             <option value="">Select role</option>
             <option value="admin">Admin</option>
             <option value="staff">Staff</option>
+            <option value="restaurant">Restaurant</option>
           </select>
         </div>
         {form.role === 'staff' && (
@@ -127,6 +129,23 @@ const Register = () => {
               required
             />
             <div className="text-xs text-gray-500 mt-1">Select one or more departments. (Number will be stored with department)</div>
+          </div>
+        )}
+        {form.role === 'restaurant' && (
+          <div className="mb-4">
+            <label className="block mb-1 font-medium">Restaurant Role</label>
+            <select
+              name="restaurantRole"
+              value={form.restaurantRole}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">Select restaurant role</option>
+              <option value="staff">Staff</option>
+              <option value="cashier">Cashier</option>
+              <option value="chef">Chef</option>
+            </select>
           </div>
         )}
         {error && (
