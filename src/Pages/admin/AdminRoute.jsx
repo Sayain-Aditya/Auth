@@ -38,10 +38,17 @@ const AdminRoute = ({ children }) => {
       return children;
     }
     
-    // Allow restaurant chef access to KOT management
-    if (payload.role === 'restaurant' && 
-        payload.restaurantRole === 'chef' &&
+    // Allow restaurant chef and admin access to KOT management
+    if (((payload.role === 'restaurant' && payload.restaurantRole === 'chef') ||
+        payload.role === 'admin') &&
         window.location.pathname.includes('/kot-management')) {
+      return children;
+    }
+    
+    // Allow restaurant cashier and admin access to billing management
+    if (((payload.role === 'restaurant' && payload.restaurantRole === 'cashier') ||
+        payload.role === 'admin') &&
+        window.location.pathname.includes('/billing-management')) {
       return children;
     }
     

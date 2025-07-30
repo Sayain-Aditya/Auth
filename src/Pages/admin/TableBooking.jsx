@@ -29,12 +29,44 @@ const TableBooking = () => {
     items: [{ itemId: '', quantity: 1 }]
   });
   const [showAddItems, setShowAddItems] = useState(false);
+  const [transferForm, setTransferForm] = useState({
+    orderId: '',
+    currentTable: '',
+    newTableNo: '',
+    reason: ''
+  });
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredBookings, setFilteredBookings] = useState([]);
 
   useEffect(() => {
     fetchTables();
     fetchBookings();
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    setFilteredBookings(bookings);
+  }, [bookings]);
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim()) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`http://localhost:5000/api/search/universal?query=${query}&type=orders`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setFilteredBookings(res.data.orders || []);
+      } catch (err) {
+        console.error('Search failed:', err);
+        setFilteredBookings([]);
+      }
+    } else {
+      setFilteredBookings(bookings);
+    }
+  };
 
   const fetchTables = async () => {
     try {
@@ -214,6 +246,40 @@ const TableBooking = () => {
       fetchBookings();
     } catch (err) {
       setError('Failed to add items');
+    }
+  };
+
+  const openTransferModal = (booking) => {
+    setTransferForm({
+      orderId: booking._id,
+      currentTable: booking.tableNo,
+      newTableNo: '',
+      reason: 'Customer request'
+    });
+    setShowTransferModal(true);
+  };
+
+  const submitTransferTable = async () => {
+    if (!transferForm.newTableNo) {
+      setError('Please select a table');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`http://localhost:5000/api/restaurant-orders/${transferForm.orderId}/transfer-table`, 
+        { 
+          newTableNo: transferForm.newTableNo, 
+          reason: transferForm.reason 
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setShowTransferModal(false);
+      setSuccess('Table transferred successfully');
+      fetchBookings();
+      fetchTables();
+    } catch (err) {
+      setError('Failed to transfer table');
     }
   };
 
@@ -445,7 +511,19 @@ const TableBooking = () => {
 
       {/* Bookings List */}
       {activeTab === 'bookings' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div>
+          {/* Search Input */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search bookings by staff, phone, table, or status..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full p-3 border rounded-lg"
+            />
+          </div>
+          
+          <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -459,7 +537,7 @@ const TableBooking = () => {
               </tr>
             </thead>
             <tbody>
-              {bookings.map(booking => (
+              {filteredBookings.map(booking => (
                 <tr key={booking._id}>
                   <td className="px-4 py-2 border-b">{booking.staffName}</td>
                   <td className="px-4 py-2 border-b">{booking.phoneNumber}</td>
@@ -493,18 +571,27 @@ const TableBooking = () => {
                       Invoice
                     </button>
                     {booking.status !== 'completed' && booking.status !== 'cancelled' && (
-                      <button 
-                        onClick={() => openAddItemsModal(booking._id)}
-                        className="text-purple-600 text-sm hover:underline"
-                      >
-                        Add Items
-                      </button>
+                      <>
+                        <button 
+                          onClick={() => openAddItemsModal(booking._id)}
+                          className="text-purple-600 text-sm hover:underline mr-2"
+                        >
+                          Add Items
+                        </button>
+                        <button 
+                          onClick={() => openTransferModal(booking)}
+                          className="text-orange-600 text-sm hover:underline"
+                        >
+                          Transfer Table
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -712,6 +799,67 @@ const TableBooking = () => {
               </button>
               <button
                 onClick={() => setShowAddItems(false)}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Table Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Transfer Table</h3>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Current Table: <span className="font-medium">{transferForm.currentTable}</span>
+              </p>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Select New Table</label>
+              <select
+                value={transferForm.newTableNo}
+                onChange={(e) => setTransferForm({...transferForm, newTableNo: e.target.value})}
+                className="w-full p-2 border rounded"
+                required
+              >
+                <option value="">Select Available Table</option>
+                {tables
+                  .filter(table => table.tableNumber !== transferForm.currentTable)
+                  .map(table => (
+                    <option key={table._id} value={table.tableNumber}>
+                      Table {table.tableNumber} (Capacity: {table.capacity}) - {table.location}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Reason for Transfer</label>
+              <input
+                type="text"
+                value={transferForm.reason}
+                onChange={(e) => setTransferForm({...transferForm, reason: e.target.value})}
+                className="w-full p-2 border rounded"
+                placeholder="Enter reason..."
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={submitTransferTable}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+              >
+                Transfer Table
+              </button>
+              <button
+                onClick={() => setShowTransferModal(false)}
                 className="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
               >
                 Cancel

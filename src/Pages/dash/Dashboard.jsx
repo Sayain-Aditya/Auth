@@ -147,11 +147,28 @@ const Dashboard = () => {
 
       <div className="mt-6 flex flex-col gap-3">
         {user.role === 'admin' && (
-          <button 
-            onClick={() => navigate('/admin')}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
-            Admin Dashboard
-          </button>
+          <>
+            <button 
+              onClick={() => navigate('/admin')}
+              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+              Admin Dashboard
+            </button>
+            <button 
+              onClick={() => navigate('/admin/kot-management')}
+              className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition">
+              KOT Management
+            </button>
+            <button 
+              onClick={() => navigate('/admin/billing-management')}
+              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
+              Billing Management
+            </button>
+            <button 
+              onClick={() => navigate('/admin/user-management')}
+              className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
+              User Management
+            </button>
+          </>
         )}
         
         {/* Add Book Room button for reception staff */}
@@ -201,6 +218,22 @@ const Dashboard = () => {
             KOT Management
           </button>
         )}
+        
+        {/* Add Billing Management button for restaurant cashier */}
+        {user.role === 'restaurant' && user.restaurantRole === 'cashier' && (
+          <button 
+            onClick={() => navigate('/admin/billing-management')}
+            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
+            Billing Management
+          </button>
+        )}
+        
+        {/* Universal Search button for all users */}
+        <button 
+          onClick={() => navigate('/search')}
+          className="w-full bg-gray-600 text-white py-2 rounded hover:bg-gray-700 transition">
+          Search
+        </button>
       </div>
     </div>
   );
