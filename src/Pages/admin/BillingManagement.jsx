@@ -4,6 +4,7 @@ import axios from 'axios';
 const BillingManagement = () => {
   const [orders, setOrders] = useState([]);
   const [bills, setBills] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -25,6 +26,7 @@ const BillingManagement = () => {
   useEffect(() => {
     fetchOrders();
     fetchBills();
+    fetchBookings();
   }, []);
 
   const fetchOrders = async () => {
@@ -49,6 +51,32 @@ const BillingManagement = () => {
       setBills(res.data);
     } catch (err) {
       setError('Failed to fetch bills');
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/restaurant-orders/all', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBookings(res.data || []);
+    } catch (err) {
+      setError('Failed to fetch bookings');
+    }
+  };
+
+  const updateBookingStatus = async (bookingId, status) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`http://localhost:5000/api/restaurant-orders/${bookingId}/status`, 
+        { status },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      fetchBookings();
+      setSuccess('Booking status updated successfully');
+    } catch (err) {
+      setError('Failed to update booking status');
     }
   };
 
@@ -89,15 +117,25 @@ const BillingManagement = () => {
   const processPayment = async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/bills/${paymentForm.billId}/payment`, {
+      const response = await axios.patch(`http://localhost:5000/api/bills/${paymentForm.billId}/payment`, {
         paidAmount: paymentForm.paidAmount,
         paymentMethod: paymentForm.paymentMethod
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // If payment is successful and bill has orderId, mark the booking as completed
+      if (response.data && response.data.orderId) {
+        await axios.patch(`http://localhost:5000/api/restaurant-orders/${response.data.orderId}/status`, 
+          { status: 'completed' },
+          { headers: { Authorization: `Bearer ${token}` }}
+        );
+      }
+      
       setShowPaymentModal(false);
-      setSuccess('Payment processed successfully');
+      setSuccess('Payment processed and table marked as completed');
       fetchBills();
+      fetchBookings();
     } catch (err) {
       setError('Failed to process payment');
     }
@@ -114,7 +152,7 @@ const BillingManagement = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Billing Management</h2>
+      <h2 className="text-2xl font-bold mb-6">Cashier Dashboard</h2>
       
       {/* Tabs */}
       <div className="flex border-b mb-6">
@@ -129,6 +167,12 @@ const BillingManagement = () => {
           onClick={() => setActiveTab('bills')}
         >
           All Bills
+        </button>
+        <button
+          className={`py-2 px-4 ${activeTab === 'bookings' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+          onClick={() => setActiveTab('bookings')}
+        >
+          Table Bookings
         </button>
       </div>
 
@@ -270,6 +314,77 @@ const BillingManagement = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Table Bookings */}
+      {activeTab === 'bookings' && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left">Table</th>
+                <th className="px-4 py-2 text-left">Staff</th>
+                <th className="px-4 py-2 text-left">Phone</th>
+                <th className="px-4 py-2 text-left">Items</th>
+                <th className="px-4 py-2 text-left">Amount</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-left">Time</th>
+                <th className="px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map(booking => (
+                <tr key={booking._id}>
+                  <td className="px-4 py-2 border-b">{booking.tableNo}</td>
+                  <td className="px-4 py-2 border-b">{booking.staffName}</td>
+                  <td className="px-4 py-2 border-b">{booking.phoneNumber}</td>
+                  <td className="px-4 py-2 border-b">{booking.items.length} items</td>
+                  <td className="px-4 py-2 border-b">₹{booking.amount}</td>
+                  <td className="px-4 py-2 border-b">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      booking.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                      booking.status === 'ready' ? 'bg-green-100 text-green-800' :
+                      booking.status === 'served' ? 'bg-purple-100 text-purple-800' :
+                      booking.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {booking.status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 border-b">{new Date(booking.createdAt).toLocaleTimeString()}</td>
+                  <td className="px-4 py-2 border-b">
+                    <select
+                      value={booking.status}
+                      onChange={(e) => updateBookingStatus(booking._id, e.target.value)}
+                      className="p-1 border rounded text-sm mr-2"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="preparing">Preparing</option>
+                      <option value="ready">Ready</option>
+                      <option value="served">Served</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    {booking.status === 'served' && (
+                      <button
+                        onClick={() => openBillModal(booking)}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                      >
+                        Bill
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {bookings.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No table bookings found
+            </div>
+          )}
         </div>
       )}
 
