@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import HousekeepingTaskForm from "./HousekeepingTaskForm";
+import NotificationSystem from "../../components/NotificationSystem";
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -70,7 +71,10 @@ const Dashboard = () => {
 
   return (
     <div className="max-w-xl mx-auto mt-16 p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Dashboard</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <NotificationSystem />
+      </div>
       
       <div className="mb-4">
         <span className="font-semibold">Username:</span> {user.username}

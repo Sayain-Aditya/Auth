@@ -39,6 +39,7 @@ const KOTManagement = () => {
       await axios.patch(`http://localhost:5000/api/kot/${kotId}/status`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
       fetchKOTs();
     } catch (err) {
       setError('Failed to update KOT status');
@@ -169,9 +170,9 @@ const KOTManagement = () => {
                 {kot.status === 'ready' && (
                   <button
                     onClick={() => updateKOTStatus(kot._id, 'served')}
-                    className="flex-1 px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                    className="flex-1 px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
                   >
-                    Mark Served
+                    Mark Served & Notify
                   </button>
                 )}
               </div>
