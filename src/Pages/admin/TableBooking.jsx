@@ -5,6 +5,7 @@ const TableBooking = () => {
   const [tables, setTables] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [items, setItems] = useState([]);
+  const [restaurantStaff, setRestaurantStaff] = useState([]);
   const [form, setForm] = useState({
     staffName: '',
     phoneNumber: '',
@@ -43,6 +44,7 @@ const TableBooking = () => {
     fetchTables();
     fetchBookings();
     fetchItems();
+    fetchRestaurantStaff();
   }, []);
 
   useEffect(() => {
@@ -101,6 +103,18 @@ const TableBooking = () => {
       setItems(res.data || []);
     } catch (err) {
       console.error('Failed to fetch items');
+    }
+  };
+
+  const fetchRestaurantStaff = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/search/field?model=users&field=role&value=restaurant', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRestaurantStaff(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch restaurant staff');
     }
   };
 
@@ -334,15 +348,23 @@ const TableBooking = () => {
           <h3 className="text-lg font-semibold mb-4">Book Table</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <input
-              type="text"
+            <select
               name="staffName"
-              placeholder="Staff Name"
               value={form.staffName}
               onChange={handleChange}
               className="p-2 border rounded"
               required
-            />
+            >
+              <option value="">Select Staff</option>
+              {restaurantStaff
+                .filter(staff => staff.restaurantRole === 'staff')
+                .map(staff => (
+                  <option key={staff._id} value={staff.username}>
+                    {staff.username}
+                  </option>
+                ))
+              }
+            </select>
             
             <input
               type="tel"
