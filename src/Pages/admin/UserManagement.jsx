@@ -10,6 +10,14 @@ const UserManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 15,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -38,14 +46,15 @@ const UserManagement = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/auth/all-users', {
+      const res = await axios.get(`http://localhost:5000/api/auth/all-users?page=${page}&limit=15`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUsers(res.data || []);
+      setUsers(res.data.users || []);
+      setPagination(res.data.pagination || {});
     } catch (err) {
       setError('Failed to fetch users');
     } finally {
@@ -145,54 +154,84 @@ const UserManagement = () => {
       {loading ? (
         <div className="text-center">Loading users...</div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left">Username</th>
-                <th className="px-4 py-2 text-left">Email</th>
-                <th className="px-4 py-2 text-left">Role</th>
-                <th className="px-4 py-2 text-left">Department</th>
-                <th className="px-4 py-2 text-left">Created</th>
-                <th className="px-4 py-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map(user => (
-                <tr key={user._id}>
-                  <td className="px-4 py-2 border-b font-medium">{user.username}</td>
-                  <td className="px-4 py-2 border-b">{user.email}</td>
-                  <td className="px-4 py-2 border-b">
-                    {getRoleBadge(user.role, user.restaurantRole)}
-                  </td>
-                  <td className="px-4 py-2 border-b">
-                    {formatDepartments(user.department)}
-                  </td>
-                  <td className="px-4 py-2 border-b">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-2 border-b">
-                    <button
-                      onClick={() => openEditModal(user)}
-                      className="text-blue-600 text-sm hover:underline mr-2"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteUser(user._id)}
-                      className="text-red-600 text-sm hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
+        <div>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left">Username</th>
+                  <th className="px-4 py-2 text-left">Email</th>
+                  <th className="px-4 py-2 text-left">Role</th>
+                  <th className="px-4 py-2 text-left">Department</th>
+                  <th className="px-4 py-2 text-left">Created</th>
+                  <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredUsers.map(user => (
+                  <tr key={user._id}>
+                    <td className="px-4 py-2 border-b font-medium">{user.username}</td>
+                    <td className="px-4 py-2 border-b">{user.email}</td>
+                    <td className="px-4 py-2 border-b">
+                      {getRoleBadge(user.role, user.restaurantRole)}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {formatDepartments(user.department)}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      <button
+                        onClick={() => openEditModal(user)}
+                        className="text-blue-600 text-sm hover:underline mr-2"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteUser(user._id)}
+                        className="text-red-600 text-sm hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            {filteredUsers.length === 0 && !loading && (
+              <div className="text-center py-8 text-gray-500">
+                No users found
+              </div>
+            )}
+          </div>
           
-          {filteredUsers.length === 0 && !loading && (
-            <div className="text-center py-8 text-gray-500">
-              No users found
+          {/* Pagination */}
+          {!searchQuery && pagination.totalPages > 1 && (
+            <div className="flex justify-between items-center mt-4 px-4 py-2 bg-gray-50 rounded">
+              <div className="text-sm text-gray-600">
+                Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} users
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fetchUsers(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrevPage}
+                  className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-300"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 bg-white border rounded">
+                  {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => fetchUsers(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-300"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
