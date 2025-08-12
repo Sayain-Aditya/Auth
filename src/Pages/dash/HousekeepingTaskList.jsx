@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import HousekeepingTaskDetails from './HousekeepingTaskDetails';
 
 const HousekeepingTaskList = () => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -11,7 +12,6 @@ const HousekeepingTaskList = () => {
     priority: '',
     cleaningType: ''
   });
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [user, setUser] = useState(null);
   const [isHousekeepingStaff, setIsHousekeepingStaff] = useState(false);
 
@@ -105,7 +105,7 @@ const HousekeepingTaskList = () => {
   };
 
   const handleTaskClick = (taskId) => {
-    setSelectedTaskId(taskId === selectedTaskId ? null : taskId);
+    navigate(`/dashboard/housekeeping/task/${taskId}`);
   };
 
   const getStatusBadgeClass = (status) => {
@@ -214,18 +214,11 @@ const HousekeepingTaskList = () => {
                       <span className={`px-2 py-1 rounded text-sm ${getStatusBadgeClass(task.status)}`}>
                         {task.status}
                       </span>
-                      <span className="ml-2">
-                        {selectedTaskId === task._id ? '▲' : '▼'}
+                      <span className="ml-2 text-blue-600">
+                        View Details →
                       </span>
                     </div>
                   </div>
-                  
-                  {/* Task details */}
-                  {selectedTaskId === task._id && (
-                    <div className="border-t border-gray-200">
-                      <HousekeepingTaskDetails taskId={task._id} />
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

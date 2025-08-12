@@ -1,463 +1,490 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import HousekeepingPhotoUpload from "./HousekeepingPhotoUpload";
-import RoomInventoryChecklist from "./RoomInventoryChecklist";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import RoomInventoryChecklistForm from './RoomInventoryChecklistForm';
 
-const HousekeepingTaskDetails = ({ taskId }) => {
+const HousekeepingTaskDetails = () => {
+  const { taskId } = useParams();
+  const navigate = useNavigate();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [showCleaning, setShowCleaning] = useState(false);
+  const [beforeImages, setBeforeImages] = useState([]);
+  const [afterImages, setAfterImages] = useState([]);
+  const [cleaningNotes, setCleaningNotes] = useState('');
+  const [issues, setIssues] = useState([]);
+  const [newIssue, setNewIssue] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState(null);
-  const [canUpdateStatus, setCanUpdateStatus] = useState(false);
 
   useEffect(() => {
-    // Get user info from token
-    const fetchUserData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
+    fetchTaskDetails();
+    getUserInfo();
+  }, [taskId]);
 
-        // Decode token to get basic user info
-        const payload = token.split(".")[1];
+  const getUserInfo = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = token.split('.')[1];
         const decoded = JSON.parse(atob(payload));
-
-        const userData = {
-          id: decoded.id,
-          username: decoded.username || decoded.name || "",
-          department: decoded.department,
-          role: decoded.role,
-        };
-
-        setUser(userData);
-      } catch (err) {
-        console.error("Error decoding token:", err);
+        setUser(decoded);
       }
-    };
-
-    fetchUserData();
-  }, []);
-
-  useEffect(() => {
-    if (taskId && user) {
-      fetchTaskDetails();
+    } catch (err) {
+      console.error('Error decoding token:', err);
     }
-  }, [taskId, user]);
+  };
 
   const fetchTaskDetails = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `http://localhost:5000/api/housekeeping/tasks/${taskId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      const taskData = response.data.task;
-      setTask(taskData);
-
-      // Check if user can update this task's status
-      if (user) {
-        // Admin can update any task
-        if (user.role === "admin") {
-          setCanUpdateStatus(true);
-        }
-        // All staff can update tasks for now
-        else if (user.role === "staff") {
-          setCanUpdateStatus(true);
-        }
-      }
-
-      setError("");
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`http://localhost:5000/api/housekeeping/tasks/${taskId}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      });
+      setTask(res.data.task);
     } catch (err) {
-      setError(`Error: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setLoading(false);
+      setError('Failed to fetch task details');
     }
+    setLoading(false);
   };
 
   const updateTaskStatus = async (newStatus) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.patch(
-        `http://localhost:5000/api/housekeeping/tasks/${taskId}/status`,
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const token = localStorage.getItem('token');
+      const res = await axios.put(`http://localhost:5000/api/housekeeping/tasks/${taskId}/status`, {
+        status: newStatus
+      }, {
+        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      });
       
-      // If task is completed, update the room status to available
-      if (newStatus === "completed" && task.roomId?._id) {
-        await axios.put(
-          `http://localhost:5000/api/rooms/update/${task.roomId._id}`,
-          { status: 'available' },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+      setTask(res.data.task);
+      setSuccess(`Task status updated to ${newStatus}`);
+      
+      // For checkout cleaning, show checklist first when starting task
+      if (newStatus === 'in-progress' && task.cleaningType === 'checkout') {
+        setShowChecklist(true);
       }
-      
-      fetchTaskDetails();
     } catch (err) {
-      setError(`Error: ${err.response?.data?.error || err.message}`);
+      setError(err.response?.data?.error || 'Failed to update task status');
     }
   };
 
-  if (loading) return <div className="p-4">Loading task details...</div>;
-  if (error) return <div className="p-4 text-red-600">{error}</div>;
-  if (!task) return <div className="p-4">No task found</div>;
+  const handleChecklistComplete = async (inspectionData) => {
+    setSuccess(`Room inspection completed! ${inspectionData.totalCharges > 0 ? `Additional charges: ₹${inspectionData.totalCharges}` : 'No additional charges.'}`);
+    setShowChecklist(false);
+    
+    // Start cleaning process after inventory check
+    try {
+      const token = localStorage.getItem('token');
+      
+      // First update to cleaning status
+      const cleaningRes = await axios.put(`http://localhost:5000/api/housekeeping/tasks/${taskId}/status`, {
+        status: 'cleaning'
+      }, {
+        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      });
+      
+      setTask(cleaningRes.data.task);
+      setShowCleaning(true);
+      setSuccess('Inventory check completed. Starting cleaning process...');
+      
+    } catch (err) {
+      setError('Failed to start cleaning process');
+    }
+  };
 
-  return (
-    <div className="p-4 bg-white rounded shadow">
-      <h2 className="text-xl font-bold mb-4">Task Details</h2>
-
-      {/* Visual workflow indicator */}
-      <div className="mb-6">
-        <div className="flex items-center">
-          <div
-            className={`w-1/4 text-center ${
-              task.status !== "pending" ? "opacity-50" : ""
-            }`}
-          >
-            <div
-              className={`h-8 w-8 rounded-full mx-auto flex items-center justify-center ${
-                task.status === "pending"
-                  ? "bg-yellow-500 text-white"
-                  : "bg-gray-200"
-              }`}
-            >
-              1
-            </div>
-            <div className="mt-1 text-xs">Pending</div>
-          </div>
-          <div className="w-1/4 h-1 bg-gray-200"></div>
-          <div
-            className={`w-1/4 text-center ${
-              task.status !== "in-progress" ? "opacity-50" : ""
-            }`}
-          >
-            <div
-              className={`h-8 w-8 rounded-full mx-auto flex items-center justify-center ${
-                task.status === "in-progress"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200"
-              }`}
-            >
-              2
-            </div>
-            <div className="mt-1 text-xs">In Progress</div>
-          </div>
-          <div className="w-1/4 h-1 bg-gray-200"></div>
-          <div
-            className={`w-1/4 text-center ${
-              task.status !== "completed" && task.status !== "verified"
-                ? "opacity-50"
-                : ""
-            }`}
-          >
-            <div
-              className={`h-8 w-8 rounded-full mx-auto flex items-center justify-center ${
-                task.status === "completed" || task.status === "verified"
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-200"
-              }`}
-            >
-              3
-            </div>
-            <div className="mt-1 text-xs">Completed</div>
-          </div>
-        </div>
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="mt-2">Loading task details...</p>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <p>
-            <span className="font-semibold">Room:</span> {task.roomId?.title} (#
-            {task.roomId?.room_number})
-          </p>
-          <p>
-            <span className="font-semibold">Status:</span>
-            <span
-              className={`ml-2 px-2 py-1 rounded text-sm ${
-                task.status === "pending"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : task.status === "in-progress"
-                  ? "bg-blue-100 text-blue-800"
-                  : task.status === "completed"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-purple-100 text-purple-800"
-              }`}
-            >
-              {task.status === "pending"
-                ? "Pending"
-                : task.status === "in-progress"
-                ? "In Progress"
-                : task.status === "completed"
-                ? "Completed"
-                : "Verified"}
-            </span>
-          </p>
-          <p>
-            <span className="font-semibold">Type:</span> {task.cleaningType}
-          </p>
-          <p>
-            <span className="font-semibold">Priority:</span> {task.priority}
-          </p>
-        </div>
-        <div>
-          <p>
-            <span className="font-semibold">Assigned to:</span>{" "}
-            {task.assignedTo?.username || "Unassigned"}
-          </p>
-          <p>
-            <span className="font-semibold">Created:</span>{" "}
-            {new Date(task.createdAt).toLocaleString()}
-          </p>
-          {task.startTime && (
-            <p>
-              <span className="font-semibold">Started:</span>{" "}
-              {new Date(task.startTime).toLocaleString()}
-            </p>
-          )}
-          {task.endTime && (
-            <p>
-              <span className="font-semibold">Completed:</span>{" "}
-              {new Date(task.endTime).toLocaleString()}
-            </p>
-          )}
-        </div>
+  if (!task) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Task not found</p>
+        <button 
+          onClick={() => navigate('/dashboard/housekeeping')}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Back to Tasks
+        </button>
       </div>
+    );
+  }
 
-      {task.notes && (
-        <div className="mb-4">
-          <h3 className="font-semibold">Notes:</h3>
-          <p className="bg-gray-50 p-2 rounded">{task.notes}</p>
-        </div>
-      )}
+  if (showChecklist) {
+    return (
+      <RoomInventoryChecklistForm 
+        taskId={taskId}
+        roomId={task.roomId?._id || task.roomId}
+        onComplete={handleChecklistComplete}
+      />
+    );
+  }
 
-      {/* Status update buttons - only show if user has permission */}
-      {canUpdateStatus ? (
+  // Cleaning Interface
+  if (showCleaning) {
+    const handleImageUpload = async (files, type) => {
+      setUploading(true);
+      try {
+        const imageUrls = [];
+        for (const file of files) {
+          const reader = new FileReader();
+          const base64Promise = new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          });
+          const base64 = await base64Promise;
+          imageUrls.push(base64);
+        }
+        if (type === 'before') {
+          setBeforeImages(prev => [...prev, ...imageUrls]);
+        } else {
+          setAfterImages(prev => [...prev, ...imageUrls]);
+        }
+      } catch (err) {
+        setError('Failed to upload images');
+      }
+      setUploading(false);
+    };
+
+    const addIssue = () => {
+      if (newIssue.trim()) {
+        setIssues(prev => [...prev, newIssue.trim()]);
+        setNewIssue('');
+      }
+    };
+
+    const removeIssue = (index) => {
+      setIssues(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleCleaningComplete = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const updateData = {
+          status: 'completed',
+          notes: cleaningNotes || 'Cleaning completed',
+          issues,
+          beforeImages,
+          afterImages
+        };
+        
+        await axios.put(`http://localhost:5000/api/housekeeping/tasks/${taskId}/status`, updateData, {
+          headers: { Authorization: token ? `Bearer ${token}` : undefined }
+        });
+        
+        setShowCleaning(false);
+        setSuccess('Room cleaning completed!');
+        await fetchTaskDetails();
+      } catch (err) {
+        setError('Failed to complete cleaning');
+      }
+    };
+
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <h2 className="text-2xl font-bold mb-6">Room Cleaning in Progress</h2>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* Before Images */}
         <div className="mb-6">
-          <h3 className="font-semibold mb-2">Update Status:</h3>
-
-          {/* Workflow guide */}
-          <div className="mb-3 p-3 bg-blue-50 text-blue-700 rounded border border-blue-200">
-            <p className="font-medium">Cleaning Workflow:</p>
-            <ol className="list-decimal ml-5 mt-1">
-              <li>Click "Start Cleaning" when you begin cleaning the room</li>
-              <li>Upload "Before Cleaning" photos</li>
-              <li>
-                After cleaning is complete, upload "After Cleaning" photos
-              </li>
-              <li>Click "Mark Completed" when the room is clean</li>
-            </ol>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => updateTaskStatus("in-progress")}
-              disabled={task.status !== "pending"}
-              className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-300"
-            >
-              Start Cleaning
-            </button>
-            <button
-              onClick={() => updateTaskStatus("completed")}
-              disabled={task.status !== "in-progress"}
-              className="px-3 py-1 bg-green-600 text-white rounded disabled:bg-gray-300"
-            >
-              Mark Completed
-            </button>
-            {/* Only admin can verify cleaning */}
-            {user && user.role === "admin" && (
-              <button
-                onClick={() => updateTaskStatus("verified")}
-                disabled={task.status !== "completed"}
-                className="px-3 py-1 bg-purple-600 text-white rounded disabled:bg-gray-300"
-              >
-                Verify Cleaning
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="mb-6 p-3 bg-gray-50 text-gray-600 rounded border border-gray-200">
-          <p>You don't have permission to update this task's status.</p>
-          {task.assignedTo && (
-            <p className="mt-1">
-              This task is assigned to:{" "}
-              <span className="font-medium">{task.assignedTo.username}</span>
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Room Inventory Checklist - only show when task is in progress */}
-      {task.status === "in-progress" && canUpdateStatus && (
-        <div className="mb-6">
-          <RoomInventoryChecklist 
-            taskId={taskId} 
-            roomId={task.roomId?._id}
-            onComplete={() => {
-              alert('Room inventory check completed!');
-              fetchTaskDetails();
-            }}
-          />
-        </div>
-      )}
-
-      {/* Photo upload section */}
-      <div className="mb-6">
-        <h3 className="font-semibold mb-2">Room Photos:</h3>
-        <HousekeepingPhotoUpload taskId={taskId} />
-      </div>
-
-      {/* Display existing photos */}
-      {task.images && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Before cleaning photos */}
-          <div>
-            <h3 className="font-semibold mb-2">Before Cleaning:</h3>
-            {task.images.before && task.images.before.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {task.images.before.map((image, index) => (
-                  <div key={`before-${index}`} className="relative">
-                    <img
-                      src={image.url}
-                      alt={`Before cleaning ${index + 1}`}
-                      className="w-full h-32 object-cover rounded"
-                    />
-                    <span className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
-                      {new Date(image.uploadedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">No before cleaning photos</p>
-            )}
-          </div>
-
-          {/* After cleaning photos */}
-          <div>
-            <h3 className="font-semibold mb-2">After Cleaning:</h3>
-            {task.images.after && task.images.after.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {task.images.after.map((image, index) => (
-                  <div key={`after-${index}`} className="relative">
-                    <img
-                      src={image.url}
-                      alt={`After cleaning ${index + 1}`}
-                      className="w-full h-32 object-cover rounded"
-                    />
-                    <span className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
-                      {new Date(image.uploadedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">No after cleaning photos</p>
-            )}
-          </div>
-        </div>
-      )}
-      {/* Issue reporting section */}
-      {task.status === "in-progress" && canUpdateStatus && (
-        <div className="mb-6">
-          <h3 className="font-semibold mb-2">Report Broken Item:</h3>
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const description = e.target.description.value;
-                const severity = e.target.severity.value;
-                if (!description) return;
-
-                try {
-                  const token = localStorage.getItem("token");
-                  await axios.post(
-                    `http://localhost:5000/api/housekeeping/tasks/${taskId}/issues`,
-                    { description, severity },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
-                  e.target.reset();
-                  setError("");
-                  fetchTaskDetails();
-                  alert("Issue reported successfully");
-                } catch (err) {
-                  setError(
-                    `Error reporting issue: ${
-                      err.response?.data?.error || err.message
-                    }`
-                  );
-                }
-              }}
-            >
-              <div className="mb-3">
-                <label className="block mb-1">
-                  Description of broken item:
-                </label>
-                <input
-                  type="text"
-                  name="description"
-                  className="w-full p-2 border rounded"
-                  placeholder="e.g. Broken lamp, TV not working"
-                  required
+          <h3 className="text-lg font-semibold mb-3">Before Cleaning Images</h3>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => handleImageUpload(Array.from(e.target.files), 'before')}
+              className="mb-3"
+              disabled={uploading}
+            />
+            <div className="grid grid-cols-3 gap-3">
+              {beforeImages.map((img, index) => (
+                <img
+                  key={index}
+                  src={img}
+                  alt={`Before ${index + 1}`}
+                  className="w-full h-32 object-cover rounded"
                 />
-              </div>
-              <div className="mb-3">
-                <label className="block mb-1">Severity:</label>
-                <select name="severity" className="w-full p-2 border rounded">
-                  <option value="low">Low - Not urgent</option>
-                  <option value="medium">Medium - Needs attention soon</option>
-                  <option value="high">
-                    High - Requires immediate attention
-                  </option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-              >
-                Report Issue
-              </button>
-            </form>
+              ))}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Display reported issues */}
-      {task.issues && task.issues.length > 0 && (
+        {/* Issues */}
         <div className="mb-6">
-          <h3 className="font-semibold mb-2">Reported Issues:</h3>
-          <div className="border rounded divide-y">
-            {task.issues.map((issue, index) => (
-              <div key={index} className="p-3">
-                <div className="flex justify-between">
-                  <span className="font-medium">{issue.description}</span>
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      issue.severity === "high"
-                        ? "bg-red-100 text-red-800"
-                        : issue.severity === "medium"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {issue.severity}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-500">
-                  Reported: {new Date(issue.reportedAt).toLocaleString()}
-                </div>
-                {issue.resolved && (
-                  <div className="mt-1 text-sm text-green-600">
-                    ✓ Resolved: {issue.resolution}
-                  </div>
-                )}
+          <h3 className="text-lg font-semibold mb-3">Issues Found</h3>
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={newIssue}
+              onChange={(e) => setNewIssue(e.target.value)}
+              placeholder="Enter issue description"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+              onKeyPress={(e) => e.key === 'Enter' && addIssue()}
+            />
+            <button
+              onClick={addIssue}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Add
+            </button>
+          </div>
+          <div className="space-y-2">
+            {issues.map((item, index) => (
+              <div key={index} className="flex items-center justify-between bg-red-50 p-3 rounded">
+                <span>{item}</span>
+                <button
+                  onClick={() => removeIssue(index)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Notes */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">Cleaning Notes</h3>
+          <textarea
+            value={cleaningNotes}
+            onChange={(e) => setCleaningNotes(e.target.value)}
+            placeholder="Add any notes about the cleaning process..."
+            rows="4"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+
+        {/* After Images */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">After Cleaning Images</h3>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => handleImageUpload(Array.from(e.target.files), 'after')}
+              className="mb-3"
+              disabled={uploading}
+            />
+            <div className="grid grid-cols-3 gap-3">
+              {afterImages.map((img, index) => (
+                <img
+                  key={index}
+                  src={img}
+                  alt={`After ${index + 1}`}
+                  className="w-full h-32 object-cover rounded"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Complete Button */}
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => setShowCleaning(false)}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCleaningComplete}
+            disabled={uploading}
+            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : 'Complete Cleaning'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'in-progress': return 'bg-blue-100 text-blue-800';
+      case 'cleaning': return 'bg-orange-100 text-orange-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'verified': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const canUpdateStatus = () => {
+    return user && (user.role === 'admin' || user.role === 'staff');
+  };
+
+  const canVerify = () => {
+    return user && user.role === 'admin';
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Housekeeping Task Details</h1>
+        <button
+          onClick={() => navigate('/dashboard/housekeeping')}
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+        >
+          Back to Tasks
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
       )}
+
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {success}
+        </div>
+      )}
+
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Room {task.roomId?.room_number} - {task.cleaningType.replace('-', ' ').toUpperCase()}
+            </h2>
+            <div className="flex space-x-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                {task.status.toUpperCase()}
+              </span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                {task.priority.toUpperCase()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Task Information</h3>
+              <div className="space-y-2">
+                <p><span className="font-medium">Room:</span> {task.roomId?.room_number}</p>
+                <p><span className="font-medium">Category:</span> {task.roomId?.category?.name || 'N/A'}</p>
+                <p><span className="font-medium">Cleaning Type:</span> {task.cleaningType}</p>
+                <p><span className="font-medium">Priority:</span> {task.priority}</p>
+                <p><span className="font-medium">Created:</span> {new Date(task.createdAt).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Assignment & Timing</h3>
+              <div className="space-y-2">
+                <p><span className="font-medium">Assigned To:</span> {task.assignedTo?.username || 'Unassigned'}</p>
+                <p><span className="font-medium">Start Time:</span> {task.startTime ? new Date(task.startTime).toLocaleString() : 'Not started'}</p>
+                <p><span className="font-medium">End Time:</span> {task.endTime ? new Date(task.endTime).toLocaleString() : 'Not completed'}</p>
+                <p><span className="font-medium">Verified By:</span> {task.verifiedBy?.username || 'Not verified'}</p>
+              </div>
+            </div>
+          </div>
+
+          {task.notes && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Notes</h3>
+              <p className="text-gray-700 bg-gray-50 p-3 rounded">{task.notes}</p>
+            </div>
+          )}
+
+          {task.issues && task.issues.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Reported Issues</h3>
+              <div className="space-y-2">
+                {task.issues.map((issue, index) => (
+                  <div key={index} className={`p-3 rounded ${issue.resolved ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <p className="text-sm">{issue.description}</p>
+                    <span className={`text-xs ${issue.resolved ? 'text-green-600' : 'text-red-600'}`}>
+                      {issue.resolved ? 'Resolved' : 'Pending'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        {canUpdateStatus() && (
+          <div className="px-6 py-4 bg-gray-50 border-t">
+            <div className="flex flex-wrap gap-2">
+              {task.status === 'pending' && (
+                <button
+                  onClick={() => updateTaskStatus('in-progress')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Start Task
+                </button>
+              )}
+              
+              {task.status === 'in-progress' && (
+                <button
+                  onClick={() => updateTaskStatus('completed')}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Mark Complete
+                </button>
+              )}
+              
+              {task.status === 'cleaning' && (
+                <button
+                  onClick={() => setShowCleaning(true)}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+                >
+                  Continue Cleaning
+                </button>
+              )}
+              
+              {task.status === 'completed' && task.cleaningType === 'checkout' && (
+                <button
+                  onClick={() => setShowChecklist(true)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Room Inventory Check
+                </button>
+              )}
+              
+              {task.status === 'completed' && canVerify() && (
+                <button
+                  onClick={() => updateTaskStatus('verified')}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Verify Task
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

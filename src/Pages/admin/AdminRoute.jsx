@@ -17,15 +17,37 @@ const AdminRoute = ({ children }) => {
       return children;
     }
     
-    // Allow reception staff access to booking and inventory pages
+    // Allow reception staff access to booking, room management, and inventory pages
     if (payload.role === 'staff' && Array.isArray(payload.department)) {
       const hasReception = payload.department.some(dep => dep.name?.toLowerCase() === 'reception');
       
       if (hasReception && (
         window.location.pathname.includes('/book-room') ||
+        window.location.pathname.includes('/bookings') ||
+        window.location.pathname.includes('/rooms') ||
+        window.location.pathname.includes('/checkout') ||
         window.location.pathname.includes('/inventory') ||
         window.location.pathname.includes('/purchase-orders') ||
         window.location.pathname.includes('/pantry')
+      )) {
+        return children;
+      }
+    }
+    
+    // Allow staff with reception department access to main admin pages
+    if (payload.role === 'staff') {
+      const department = payload.department;
+      const hasReception = Array.isArray(department) 
+        ? department.some(dep => dep.name?.toLowerCase() === 'reception')
+        : (typeof department === 'object' && department.name?.toLowerCase() === 'reception') ||
+          (typeof department === 'string' && department.toLowerCase() === 'reception');
+      
+      if (hasReception && (
+        window.location.pathname === '/admin' ||
+        window.location.pathname.includes('/admin/dashboard') ||
+        window.location.pathname.includes('/bookings') ||
+        window.location.pathname.includes('/rooms') ||
+        window.location.pathname.includes('/checkout')
       )) {
         return children;
       }
