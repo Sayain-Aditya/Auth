@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import HousekeepingPhotoUpload from "./HousekeepingPhotoUpload";
+import RoomInventoryChecklist from "./RoomInventoryChecklist";
 
 const HousekeepingTaskDetails = ({ taskId }) => {
   const [task, setTask] = useState(null);
@@ -285,6 +286,20 @@ const HousekeepingTaskDetails = ({ taskId }) => {
               <span className="font-medium">{task.assignedTo.username}</span>
             </p>
           )}
+        </div>
+      )}
+
+      {/* Room Inventory Checklist - only show when task is in progress */}
+      {task.status === "in-progress" && canUpdateStatus && (
+        <div className="mb-6">
+          <RoomInventoryChecklist 
+            taskId={taskId} 
+            roomId={task.roomId?._id}
+            onComplete={() => {
+              alert('Room inventory check completed!');
+              fetchTaskDetails();
+            }}
+          />
         </div>
       )}
 
