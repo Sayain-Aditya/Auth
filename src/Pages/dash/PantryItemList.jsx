@@ -182,14 +182,14 @@ const PantryItemList = () => {
                       <td className="border border-gray-300 px-4 py-2 text-right">{item.minStockLevel}</td>
                       <td className="border border-gray-300 px-4 py-2 text-right text-red-600">{item.shortfall}</td>
                       <td className="border border-gray-300 px-4 py-2">{item.unit}</td>
-                      <td className="border border-gray-300 px-4 py-2 text-right">₹{item.totalCost.toFixed(2)}</td>
+                      <td className="border border-gray-300 px-4 py-2 text-right">₹{(item.totalCost || 0).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-100 font-bold">
                     <td colSpan="6" className="border border-gray-300 px-4 py-2 text-right">Total Estimated Cost:</td>
-                    <td className="border border-gray-300 px-4 py-2 text-right">₹{invoice.totalEstimatedCost.toFixed(2)}</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">₹{(invoice.totalEstimatedCost || 0).toFixed(2)}</td>
                   </tr>
                 </tfoot>
               </table>

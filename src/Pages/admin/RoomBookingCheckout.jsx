@@ -12,6 +12,8 @@ const RoomBookingCheckout = () => {
   const [checkoutStep, setCheckoutStep] = useState('initial'); // 'initial', 'housekeeping', 'completed'
   const [housekeepingStaff, setHousekeepingStaff] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentStatus, setPaymentStatus] = useState('pending');
 
   useEffect(() => {
     fetchActiveBookings();
@@ -178,6 +180,40 @@ const RoomBookingCheckout = () => {
   };
 
 
+
+  const handlePayment = async () => {
+    if (!invoiceData) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Create payment record
+      await axios.post('http://localhost:5000/api/payments', {
+        sourceType: 'Booking',
+        sourceId: checkoutModal._id,
+        invoiceId: invoiceData._id,
+        amount: invoiceData.totalAmount,
+        paymentMode: paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'card' ? 'Card' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer',
+        paymentType: 'Final',
+        status: paymentStatus === 'paid' ? 'Paid' : 'Pending'
+      }, {
+        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      });
+      
+      // Update invoice status
+      if (paymentStatus === 'paid') {
+        await axios.put(`http://localhost:5000/api/invoices/update/${invoiceData._id}`, {
+          status: 'Paid'
+        }, {
+          headers: { Authorization: token ? `Bearer ${token}` : undefined }
+        });
+      }
+      
+      setSuccess(`Payment ${paymentStatus} via ${paymentMethod}`);
+    } catch (err) {
+      setError('Payment processing failed');
+    }
+  };
 
   const printInvoice = () => {
     window.print();
@@ -424,6 +460,47 @@ const RoomBookingCheckout = () => {
                   <span>Total:</span>
                   <span>₹{invoiceData.totalAmount}</span>
                 </div>
+              </div>
+            </div>
+            
+            {/* Payment Section */}
+            <div className="border-t pt-4 mb-4">
+              <h4 className="font-semibold mb-3">Payment Options</h4>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Credit/Debit Card</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
+                  <select
+                    value={paymentStatus}
+                    onChange={(e) => setPaymentStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex space-x-3 mb-4">
+                <button
+                  onClick={() => handlePayment()}
+                  className={`px-4 py-2 rounded-md text-white ${
+                    paymentStatus === 'paid' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {paymentStatus === 'paid' ? 'Payment Completed' : 'Process Payment'}
+                </button>
               </div>
             </div>
             

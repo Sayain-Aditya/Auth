@@ -229,7 +229,7 @@ const Dashboard = () => {
                     <div>
                       <h4 className="font-medium text-gray-900">Bills</h4>
                       <p className="text-sm text-gray-600">Manage billing</p>
-                    </div>
+``                    </div>
                   </div>
                 </div>
               </>
