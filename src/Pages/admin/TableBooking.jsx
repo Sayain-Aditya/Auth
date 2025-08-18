@@ -214,7 +214,7 @@ const TableBooking = () => {
   const generateInvoice = async (orderId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5000/api/restaurant-orders/invoice/${orderId}`, {
+      const res = await axios.get(`https://cdn.britannica.com/94/151894-050-F72A5317/Brown-eggs.jpg`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setInvoice(res.data);
