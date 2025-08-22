@@ -14,6 +14,7 @@ const RoomBookingCheckout = () => {
   const [selectedStaff, setSelectedStaff] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentStatus, setPaymentStatus] = useState('pending');
+  const [checkoutData, setCheckoutData] = useState(null);
 
   useEffect(() => {
     fetchActiveBookings();
@@ -137,44 +138,45 @@ const RoomBookingCheckout = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // 1. Update booking status to 'Checked Out'
+      // 1. Create checkout record with all service charges
+      const checkoutRes = await axios.post('http://localhost:5000/api/checkout/create', {
+        bookingId: checkoutModal._id
+      }, {
+        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      });
+      
+      setCheckoutData(checkoutRes.data.checkout);
+      
+      // 2. Update booking status to 'Checked Out'
       await axios.put(`http://localhost:5000/api/bookings/update/${checkoutModal._id}`, {
         status: 'Checked Out'
       }, {
         headers: { Authorization: token ? `Bearer ${token}` : undefined }
       });
 
-      // 2. Get all invoices for this booking (including room inspection charges)
-      const invoicesRes = await axios.get(`http://localhost:5000/api/invoices/booking/${checkoutModal._id}`, {
-        headers: { Authorization: token ? `Bearer ${token}` : undefined }
+      // 3. Create invoice data from checkout
+      setInvoiceData({
+        _id: checkoutRes.data.checkout._id,
+        invoiceNumber: `CHK-${checkoutRes.data.checkout._id.slice(-6)}`,
+        issueDate: new Date(),
+        items: [
+          { description: 'Restaurant Services', amount: checkoutRes.data.checkout.restaurantCharges },
+          { description: 'Laundry Services', amount: checkoutRes.data.checkout.laundryCharges },
+          { description: 'Room Inspection', amount: checkoutRes.data.checkout.inspectionCharges },
+          { description: 'Booking Charges', amount: checkoutRes.data.checkout.bookingCharges }
+        ].filter(item => item.amount > 0),
+        subTotal: checkoutRes.data.checkout.totalAmount,
+        tax: 0,
+        discount: 0,
+        totalAmount: checkoutRes.data.checkout.totalAmount
       });
 
-      if (invoicesRes.data.invoices && invoicesRes.data.invoices.length > 0) {
-        setInvoiceData({
-          ...invoicesRes.data.invoices[0],
-          totalAmount: invoicesRes.data.grandTotal,
-          additionalCharges: invoicesRes.data.invoices.length > 1
-        });
-      } else {
-        // Create basic booking invoice if none exists
-        const invoiceRes = await axios.post('http://localhost:5000/api/invoices/create', {
-          serviceType: 'Booking',
-          serviceRefId: checkoutModal._id,
-          tax: 0,
-          discount: 0,
-          paymentMode: 'Cash'
-        }, {
-          headers: { Authorization: token ? `Bearer ${token}` : undefined }
-        });
-        setInvoiceData(invoiceRes.data.invoice);
-      }
-
       setCheckoutStep('completed');
-      setSuccess('Room inspection completed! Final invoice generated with all charges.');
+      setSuccess('Checkout completed! Final bill generated with all service charges.');
       fetchActiveBookings();
       
     } catch (err) {
-      setError(err.response?.data?.error || 'Invoice generation failed');
+      setError(err.response?.data?.error || 'Checkout generation failed');
     }
     setLoading(false);
   };
@@ -182,32 +184,18 @@ const RoomBookingCheckout = () => {
 
 
   const handlePayment = async () => {
-    if (!invoiceData) return;
+    if (!invoiceData || !checkoutData) return;
     
     try {
       const token = localStorage.getItem('token');
       
-      // Create payment record
-      await axios.post('http://localhost:5000/api/payments', {
-        sourceType: 'Booking',
-        sourceId: checkoutModal._id,
-        invoiceId: invoiceData._id,
-        amount: invoiceData.totalAmount,
-        paymentMode: paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'card' ? 'Card' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer',
-        paymentType: 'Final',
-        status: paymentStatus === 'paid' ? 'Paid' : 'Pending'
+      // Update checkout payment status
+      await axios.put(`http://localhost:5000/api/checkout/${checkoutData._id}/payment`, {
+        status: paymentStatus,
+        paidAmount: paymentStatus === 'paid' ? invoiceData.totalAmount : 0
       }, {
         headers: { Authorization: token ? `Bearer ${token}` : undefined }
       });
-      
-      // Update invoice status
-      if (paymentStatus === 'paid') {
-        await axios.put(`http://localhost:5000/api/invoices/update/${invoiceData._id}`, {
-          status: 'Paid'
-        }, {
-          headers: { Authorization: token ? `Bearer ${token}` : undefined }
-        });
-      }
       
       setSuccess(`Payment ${paymentStatus} via ${paymentMethod}`);
     } catch (err) {
@@ -428,37 +416,90 @@ const RoomBookingCheckout = () => {
             
             <div className="border rounded-lg p-4 mb-4" id="invoice-content">
               <div className="text-center mb-4">
-                <h2 className="text-xl font-bold">Hotel Invoice</h2>
-                <p className="text-sm text-gray-600">Invoice #: {invoiceData.invoiceNumber}</p>
+                <h2 className="text-xl font-bold">Hotel Checkout Bill</h2>
+                <p className="text-sm text-gray-600">Bill #: {invoiceData.invoiceNumber}</p>
                 <p className="text-sm text-gray-600">Date: {new Date(invoiceData.issueDate).toLocaleDateString()}</p>
+                <p className="text-sm text-gray-600">Guest: {checkoutModal.name}</p>
+                <p className="text-sm text-gray-600">Room: {checkoutModal.roomNumber}</p>
               </div>
               
               <div className="mb-4">
-                <h4 className="font-semibold mb-2">Items:</h4>
-                {invoiceData.items.map((item, index) => (
-                  <div key={index} className="flex justify-between py-1">
-                    <span>{item.description}</span>
-                    <span>₹{item.amount}</span>
-                  </div>
-                ))}
+                <h4 className="font-semibold mb-3">Itemized Bill:</h4>
+
+                <table className="w-full border-collapse border border-gray-300 text-sm">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">Qty</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right">Rate</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Booking Charges */}
+                    {checkoutData?.bookingCharges > 0 && (
+                      <tr>
+                        <td className="border border-gray-300 px-3 py-2 font-medium">Room Booking</td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">1</td>
+                        <td className="border border-gray-300 px-3 py-2 text-right">₹{checkoutData.bookingCharges}</td>
+                        <td className="border border-gray-300 px-3 py-2 text-right">₹{checkoutData.bookingCharges}</td>
+                      </tr>
+                    )}
+                    
+                    {/* Inspection Items */}
+                    {checkoutData?.serviceItems?.inspection?.map((inspection, idx) => (
+                      inspection.items?.length > 0 ? inspection.items.map((item, itemIdx) => (
+                        <tr key={`inspection-${idx}-${itemIdx}`}>
+                          <td className="border border-gray-300 px-3 py-2">{item.description || 'Room Inspection Item'}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-center">1</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount || 0}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount || 0}</td>
+                        </tr>
+                      )) : inspection.charges > 0 ? (
+                        <tr key={`inspection-${idx}-fallback`}>
+                          <td className="border border-gray-300 px-3 py-2">Room Inspection</td>
+                          <td className="border border-gray-300 px-3 py-2 text-center">1</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{inspection.charges}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{inspection.charges}</td>
+                        </tr>
+                      ) : null
+                    ))}
+                    
+                    {/* Restaurant Items */}
+                    {checkoutData?.serviceItems?.restaurant?.map((order, idx) => (
+                      order.items?.map((item, itemIdx) => (
+                        <tr key={`restaurant-${idx}-${itemIdx}`}>
+                          <td className="border border-gray-300 px-3 py-2">{item.itemName}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-center">{item.quantity}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.rate}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount}</td>
+                        </tr>
+                      ))
+                    ))}
+                    
+                    {/* Laundry Items */}
+                    {checkoutData?.serviceItems?.laundry?.map((service, idx) => (
+                      service.items?.map((item, itemIdx) => (
+                        <tr key={`laundry-${idx}-${itemIdx}`}>
+                          <td className="border border-gray-300 px-3 py-2">{item.itemName}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-center">{item.quantity}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.rate}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount}</td>
+                        </tr>
+                      ))
+                    ))}
+                  </tbody>
+                </table>
               </div>
               
-              <div className="border-t pt-2">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>₹{invoiceData.subTotal}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax:</span>
-                  <span>₹{invoiceData.tax}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span>₹{invoiceData.discount}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
-                  <span>Total:</span>
+              <div className="border-t pt-3 mt-4">
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total Amount:</span>
                   <span>₹{invoiceData.totalAmount}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Pending:</span>
+                  <span>₹{checkoutData?.pendingAmount || 0}</span>
                 </div>
               </div>
             </div>
