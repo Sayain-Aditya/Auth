@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const RoomBookingCheckout = () => {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [checkoutModal, setCheckoutModal] = useState(null);
-  const [invoiceData, setInvoiceData] = useState(null);
   const [housekeepingStatus, setHousekeepingStatus] = useState(null);
   const [checkoutStep, setCheckoutStep] = useState('initial'); // 'initial', 'housekeeping', 'completed'
   const [housekeepingStaff, setHousekeepingStaff] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [paymentStatus, setPaymentStatus] = useState('pending');
   const [checkoutData, setCheckoutData] = useState(null);
 
   useEffect(() => {
@@ -83,6 +82,7 @@ const RoomBookingCheckout = () => {
         // 2. Create housekeeping task with assigned staff
         const taskRes = await axios.post('http://localhost:5000/api/housekeeping/tasks', {
           roomId: room._id,
+          bookingId: checkoutModal._id,
           cleaningType: 'checkout',
           notes: `Room checkout cleaning and inventory check for ${checkoutModal.name}`,
           priority: 'high',
@@ -106,11 +106,8 @@ const RoomBookingCheckout = () => {
     setLoading(false);
   };
 
-  const closeInvoiceModal = () => {
-    setInvoiceData(null);
-    setCheckoutModal(null);
-    setCheckoutStep('initial');
-    setHousekeepingStatus(null);
+  const viewInvoice = (checkoutId) => {
+    navigate(`/invoice/${checkoutId}`);
   };
 
   const checkHousekeepingStatus = async () => {
@@ -154,25 +151,8 @@ const RoomBookingCheckout = () => {
         headers: { Authorization: token ? `Bearer ${token}` : undefined }
       });
 
-      // 3. Create invoice data from checkout
-      setInvoiceData({
-        _id: checkoutRes.data.checkout._id,
-        invoiceNumber: `CHK-${checkoutRes.data.checkout._id.slice(-6)}`,
-        issueDate: new Date(),
-        items: [
-          { description: 'Restaurant Services', amount: checkoutRes.data.checkout.restaurantCharges },
-          { description: 'Laundry Services', amount: checkoutRes.data.checkout.laundryCharges },
-          { description: 'Room Inspection', amount: checkoutRes.data.checkout.inspectionCharges },
-          { description: 'Booking Charges', amount: checkoutRes.data.checkout.bookingCharges }
-        ].filter(item => item.amount > 0),
-        subTotal: checkoutRes.data.checkout.totalAmount,
-        tax: 0,
-        discount: 0,
-        totalAmount: checkoutRes.data.checkout.totalAmount
-      });
-
       setCheckoutStep('completed');
-      setSuccess('Checkout completed! Final bill generated with all service charges.');
+      setSuccess('Checkout completed! Click "View Invoice" to see the detailed bill.');
       fetchActiveBookings();
       
     } catch (err) {
@@ -183,29 +163,7 @@ const RoomBookingCheckout = () => {
 
 
 
-  const handlePayment = async () => {
-    if (!invoiceData || !checkoutData) return;
-    
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Update checkout payment status
-      await axios.put(`http://localhost:5000/api/checkout/${checkoutData._id}/payment`, {
-        status: paymentStatus,
-        paidAmount: paymentStatus === 'paid' ? invoiceData.totalAmount : 0
-      }, {
-        headers: { Authorization: token ? `Bearer ${token}` : undefined }
-      });
-      
-      setSuccess(`Payment ${paymentStatus} via ${paymentMethod}`);
-    } catch (err) {
-      setError('Payment processing failed');
-    }
-  };
 
-  const printInvoice = () => {
-    window.print();
-  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -400,163 +358,37 @@ const RoomBookingCheckout = () => {
         </div>
       )}
 
-      {/* Invoice Modal */}
-      {invoiceData && (
+      {/* Checkout Completed Modal */}
+      {checkoutStep === 'completed' && checkoutData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Invoice Generated</h3>
-              <button
-                onClick={closeInvoiceModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Checkout Completed!</h3>
+            <div className="mb-4">
+              <p><strong>Guest:</strong> {checkoutModal?.name}</p>
+              <p><strong>Room:</strong> {checkoutModal?.roomNumber}</p>
+              <p><strong>Total Amount:</strong> ₹{checkoutData.totalAmount}</p>
             </div>
-            
-            <div className="border rounded-lg p-4 mb-4" id="invoice-content">
-              <div className="text-center mb-4">
-                <h2 className="text-xl font-bold">Hotel Checkout Bill</h2>
-                <p className="text-sm text-gray-600">Bill #: {invoiceData.invoiceNumber}</p>
-                <p className="text-sm text-gray-600">Date: {new Date(invoiceData.issueDate).toLocaleDateString()}</p>
-                <p className="text-sm text-gray-600">Guest: {checkoutModal.name}</p>
-                <p className="text-sm text-gray-600">Room: {checkoutModal.roomNumber}</p>
-              </div>
-              
-              <div className="mb-4">
-                <h4 className="font-semibold mb-3">Itemized Bill:</h4>
-
-                <table className="w-full border-collapse border border-gray-300 text-sm">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">Qty</th>
-                      <th className="border border-gray-300 px-3 py-2 text-right">Rate</th>
-                      <th className="border border-gray-300 px-3 py-2 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Booking Charges */}
-                    {checkoutData?.bookingCharges > 0 && (
-                      <tr>
-                        <td className="border border-gray-300 px-3 py-2 font-medium">Room Booking</td>
-                        <td className="border border-gray-300 px-3 py-2 text-center">1</td>
-                        <td className="border border-gray-300 px-3 py-2 text-right">₹{checkoutData.bookingCharges}</td>
-                        <td className="border border-gray-300 px-3 py-2 text-right">₹{checkoutData.bookingCharges}</td>
-                      </tr>
-                    )}
-                    
-                    {/* Inspection Items */}
-                    {checkoutData?.serviceItems?.inspection?.map((inspection, idx) => (
-                      inspection.items?.length > 0 ? inspection.items.map((item, itemIdx) => (
-                        <tr key={`inspection-${idx}-${itemIdx}`}>
-                          <td className="border border-gray-300 px-3 py-2">{item.description || 'Room Inspection Item'}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">1</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount || 0}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount || 0}</td>
-                        </tr>
-                      )) : inspection.charges > 0 ? (
-                        <tr key={`inspection-${idx}-fallback`}>
-                          <td className="border border-gray-300 px-3 py-2">Room Inspection</td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">1</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{inspection.charges}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{inspection.charges}</td>
-                        </tr>
-                      ) : null
-                    ))}
-                    
-                    {/* Restaurant Items */}
-                    {checkoutData?.serviceItems?.restaurant?.map((order, idx) => (
-                      order.items?.map((item, itemIdx) => (
-                        <tr key={`restaurant-${idx}-${itemIdx}`}>
-                          <td className="border border-gray-300 px-3 py-2">{item.itemName}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">{item.quantity}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.rate}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount}</td>
-                        </tr>
-                      ))
-                    ))}
-                    
-                    {/* Laundry Items */}
-                    {checkoutData?.serviceItems?.laundry?.map((service, idx) => (
-                      service.items?.map((item, itemIdx) => (
-                        <tr key={`laundry-${idx}-${itemIdx}`}>
-                          <td className="border border-gray-300 px-3 py-2">{item.itemName}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">{item.quantity}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.rate}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-right">₹{item.amount}</td>
-                        </tr>
-                      ))
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div className="border-t pt-3 mt-4">
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total Amount:</span>
-                  <span>₹{invoiceData.totalAmount}</span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Pending:</span>
-                  <span>₹{checkoutData?.pendingAmount || 0}</span>
-                </div>
-              </div>
+            <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
+              <p className="text-sm text-green-800">
+                ✅ Checkout completed successfully! The detailed invoice is ready for viewing.
+              </p>
             </div>
-            
-            {/* Payment Section */}
-            <div className="border-t pt-4 mb-4">
-              <h4 className="font-semibold mb-3">Payment Options</h4>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="upi">UPI</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
-                  <select
-                    value={paymentStatus}
-                    onChange={(e) => setPaymentStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex space-x-3 mb-4">
-                <button
-                  onClick={() => handlePayment()}
-                  className={`px-4 py-2 rounded-md text-white ${
-                    paymentStatus === 'paid' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  {paymentStatus === 'paid' ? 'Payment Completed' : 'Process Payment'}
-                </button>
-              </div>
-            </div>
-            
             <div className="flex justify-end space-x-3">
               <button
-                onClick={printInvoice}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Print Invoice
-              </button>
-              <button
-                onClick={closeInvoiceModal}
+                onClick={() => {
+                  setCheckoutModal(null);
+                  setCheckoutStep('initial');
+                  setCheckoutData(null);
+                }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
               >
                 Close
+              </button>
+              <button
+                onClick={() => viewInvoice(checkoutData._id)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                View Invoice
               </button>
             </div>
           </div>

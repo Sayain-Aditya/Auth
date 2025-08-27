@@ -30,6 +30,7 @@ import OrderDetails from './Pages/OrderDetails';
 import AuthDebug from './components/AuthDebug';
 import BookingHistory from './Pages/admin/BookingHistory';
 import RoomStatusDashboard from './Pages/admin/RoomStatusDashboard';
+import Invoice from './Pages/Invoice';
 
 
 const App = () => {
@@ -69,6 +70,7 @@ const App = () => {
           <Route path="/admin/booking-history" element={<BookingHistory />} />
           <Route path="/admin/room-status" element={<RoomStatusDashboard />} />
           <Route path="/orders" element={<OrderDetails />} />
+          <Route path="/invoice/:checkoutId" element={<Invoice />} />
           <Route path="*" element={<div>Page not found - Current path: {window.location.pathname}</div>} />
         </Routes>
       </div>
