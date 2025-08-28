@@ -107,14 +107,21 @@ const UserManagement = () => {
   };
 
   const openEditModal = (user) => {
-    setEditUser({ ...user });
+    setEditUser({ ...user, password: '' });
     setShowEditModal(true);
   };
 
   const updateUser = async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/auth/users/${editUser._id}`, editUser, {
+      const updateData = { ...editUser };
+      
+      // Only include password if it's provided
+      if (!updateData.password || updateData.password.trim() === '') {
+        delete updateData.password;
+      }
+      
+      await axios.put(`http://localhost:5000/api/auth/users/${editUser._id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setShowEditModal(false);
@@ -260,6 +267,17 @@ const UserManagement = () => {
                 value={editUser.email}
                 onChange={(e) => setEditUser({...editUser, email: e.target.value})}
                 className="w-full p-2 border rounded"
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block mb-1">New Password (leave blank to keep current)</label>
+              <input
+                type="password"
+                value={editUser.password || ''}
+                onChange={(e) => setEditUser({...editUser, password: e.target.value})}
+                className="w-full p-2 border rounded"
+                placeholder="Enter new password or leave blank"
               />
             </div>
             
